@@ -177,7 +177,7 @@ DSH 是 Cordis 插件架构，主题插件本身就是一个客户端插件。�
 
 ### 5.1 包声明（`package.json` 的 `dsh` 字段）
 
-标准形态（对齐社区模板 `Nagi-ovo/dsh-ads`）：
+标准形态（参考 [Nagi-ovo/dsh-ads](https://github.com/Nagi-ovo/dsh-ads) 仓库的插件写法）：
 
 ```json
 {

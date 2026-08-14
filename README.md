@@ -151,9 +151,9 @@ dsh-material/                 # 仓库根 = 插件包根（DSH 标准形态）
     └── client.js       # 浏览器侧 bundle（__ModuleLoader__.load 格式，内联 tokens+CSS）
 ```
 
-## 6. 插件形态（标准模板对齐）
+## 6. 插件形态（参考 dsh-ads）
 
-对照社区标准模板（`Nagi-ovo/dsh-ads`）的插件形态：
+插件形态参考了 [Nagi-ovo/dsh-ads](https://github.com/Nagi-ovo/dsh-ads) 仓库（社区插件实现参考，非标准模板）：
 
 - **`dsh.bundle.patch: "./cordis.patch.yml"`** —— 声明本包是一个 bundle patch 层；
   `dsh plugin add` 后会自动把包名加进 profile 的 `dsh.profile.bundles`，无需手动编辑 profile。
