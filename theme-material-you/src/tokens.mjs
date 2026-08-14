@@ -1,34 +1,41 @@
 /**
  * Material You / Material 3 token maps for DeepSeek Harness.
  *
- * Seed color: #4666FA  (HCT hue ~296, chroma 60 at tone 50)
+ * Seed color: #3B82F6  (HCT hue ~266, chroma 64 at tone 56 — clean tech blue)
  * Every value below is a Material 3 color ROLE resolved through an HCT
  * tonal palette (tones 0..100). See palette.css for the raw ramp and
  * README.md for the role -> --dsw-* mapping rationale.
  *
  * Shape: { light: string, dark: string } per DSH ThemeTokenOverrides.
+ *
+ * Light-mode surface hierarchy is lifted toward pure white (base #FFFFFF,
+ * raised layers at HCT tones 98/96/95) for a bright, clean "blue + white" look.
+ * --dsw-specific-sidebar-nav-item-active-accent intentionally uses the
+ * primary-container tones (p90/p30): the ask_user_question "Recommended" badge
+ * paints its background with this token and its text with
+ * --dsw-alias-button-info-fill (p40/p80), so they must contrast.
  */
 
-// ---- Material 3 tonal ramps (HCT) -----------------------------------------
+// ---- Material 3 tonal ramps (HCT, azure seed #3B82F6) ----------------------
 const NEUTRAL = {
-  n0: "#000000", n4: "#0c0e15", n6: "#121319", n10: "#1a1b21", n12: "#1e1f25",
-  n17: "#282a2f", n20: "#2f3036", n22: "#33353a", n24: "#37393f", n30: "#45474d",
-  n35: "#515258", n40: "#5c5e65", n50: "#75777e", n60: "#8f9097", n70: "#a9abb2",
-  n80: "#c4c6ce", n87: "#d8dae1", n90: "#e0e2ea", n92: "#e6e8ef", n94: "#eceef5",
-  n95: "#eff0f8", n96: "#f1f3fb", n98: "#f8f9ff", n99: "#fbfcff", n100: "#ffffff",
+  n0: "#000000", n4: "#0d0e11", n6: "#121316", n10: "#1b1b1f", n12: "#1f1f23",
+  n17: "#292a2d", n20: "#303034", n22: "#343538", n24: "#38393c", n30: "#46464a",
+  n35: "#525256", n40: "#5e5e62", n50: "#77777a", n60: "#919094", n70: "#ababaf",
+  n80: "#c7c6ca", n87: "#dbd9dd", n90: "#e3e2e6", n92: "#e9e7ec", n94: "#efedf1",
+  n95: "#f2f0f4", n96: "#f5f3f7", n98: "#faf8fd", n99: "#fefbff", n100: "#ffffff",
 };
 const VARIANT = {
-  v10: "#191b26", v20: "#2e303b", v30: "#454652", v40: "#5c5d6b", v50: "#757684",
-  v60: "#8f909e", v70: "#a9aab9", v80: "#c4c5d4", v90: "#e0e1f1", v95: "#eff0ff",
-  v98: "#f8f9ff",
+  v10: "#191b22", v20: "#2e3038", v30: "#44474f", v40: "#5c5e66", v50: "#75777f",
+  v60: "#8e9099", v70: "#a9abb4", v80: "#c4c6d0", v90: "#e1e2ec", v95: "#eff0fa",
+  v98: "#f9f9ff",
 };
 const PRIMARY = {
-  p10: "#1a192e", p20: "#2b2c58", p30: "#3a3f86", p40: "#4a54b7", p50: "#676cd3",
-  p60: "#8486f0", p70: "#a6a3f5", p80: "#c6c0f9", p90: "#e3dffc", p95: "#f1effe",
-  p99: "#fcfcff",
+  p10: "#001a42", p20: "#002e6a", p30: "#004395", p40: "#015ac2", p50: "#3474dd",
+  p60: "#538ef9", p70: "#81aaff", p80: "#adc6ff", p90: "#d8e2ff", p95: "#edf0ff",
+  p99: "#fefbff",
 };
-const SECONDARY = { s30: "#474557", s40: "#5e5c76", s50: "#77748f", s80: "#c7c5d4", s90: "#e3e2e9" };
-const TERTIARY = { t40: "#775843", t80: "#d7c3b7", t90: "#ebe0da" };
+const SECONDARY = { s30: "#394764", s40: "#505e7d", s50: "#697797", s80: "#b8c6ea", s90: "#d8e2ff" };
+const TERTIARY = { t40: "#77517c", t80: "#e6b7e9", t90: "#fed6ff" };
 const ERROR = {
   light: "#ba1a1a", lightContainer: "#ffdad6", lightOnContainer: "#410002",
   dark: "#ffb4ab", darkContainer: "#93000a", darkOnContainer: "#690005",
@@ -42,29 +49,29 @@ const L = "light", D = "dark";
 const bg = (l, d) => ({ light: l, dark: d });
 
 export const materialYouTokens = {
-  // Surface elevation hierarchy (M3 surface-container-*)
-  "--dsw-alias-bg-base":     bg(NEUTRAL.n98, NEUTRAL.n6),
-  "--dsw-alias-bg-layer-1":  bg(NEUTRAL.n94, NEUTRAL.n12),
-  "--dsw-alias-bg-layer-2":  bg(NEUTRAL.n92, NEUTRAL.n17),
-  "--dsw-alias-bg-layer-3":  bg(NEUTRAL.n90, NEUTRAL.n22),
-  "--dsw-alias-bg-overlay":  bg(VARIANT.v90, NEUTRAL.n24),
-  "--dsw-alias-bg-module-platform": bg(NEUTRAL.n96, NEUTRAL.n22),
-  "--dsw-alias-bg-multi-select":   bg(NEUTRAL.n96, NEUTRAL.n12),
+  // Surface elevation hierarchy (M3 surface-container-*), light lifted white
+  "--dsw-alias-bg-base":     bg("#ffffff", NEUTRAL.n6),
+  "--dsw-alias-bg-layer-1":  bg(NEUTRAL.n98, NEUTRAL.n12),
+  "--dsw-alias-bg-layer-2":  bg(NEUTRAL.n96, NEUTRAL.n17),
+  "--dsw-alias-bg-layer-3":  bg(NEUTRAL.n95, NEUTRAL.n22),
+  "--dsw-alias-bg-overlay":  bg(VARIANT.v95, NEUTRAL.n24),
+  "--dsw-alias-bg-module-platform": bg(NEUTRAL.n99, NEUTRAL.n22),
+  "--dsw-alias-bg-multi-select":   bg(NEUTRAL.n99, NEUTRAL.n12),
   // Scrims (M3 scrim #000, tones from opacity)
   "--dsw-alias-bg-mask-1": bg("rgba(0,0,0,0.32)", "rgba(0,0,0,0.56)"),
   "--dsw-alias-bg-mask-2": bg("rgba(0,0,0,0.12)", "rgba(0,0,0,0.20)"),
   "--dsw-alias-bg-mask-3": bg("rgba(0,0,0,0.48)", "rgba(0,0,0,0.64)"),
   "--dsw-alias-bg-mask-photo": bg("rgba(0,0,0,0.88)", "rgba(0,0,0,0.92)"),
-  "--dsw-alias-bg-mask-drop": bg("rgba(236,238,245,0.72)", "rgba(30,31,37,0.72)"),
-  "--dsw-alias-bg-skeleton": bg("rgba(26,27,33,0.06)", "rgba(224,226,234,0.08)"),
+  "--dsw-alias-bg-mask-drop": bg("rgba(250,248,253,0.72)", "rgba(31,31,35,0.72)"),
+  "--dsw-alias-bg-skeleton": bg("rgba(27,27,31,0.06)", "rgba(227,226,230,0.08)"),
 
   // 2) Border / outline (M3 outline & outline-variant)
-  "--dsw-alias-border-l1": bg("rgba(26,27,33,0.06)", "rgba(224,226,234,0.08)"),
-  "--dsw-alias-border-l2": bg("rgba(26,27,33,0.12)", "rgba(224,226,234,0.14)"),
-  "--dsw-alias-border-l3": bg("rgba(26,27,33,0.16)", "rgba(224,226,234,0.20)"),
-  "--dsw-alias-border-l4": bg("rgba(26,27,33,0.24)", "rgba(224,226,234,0.28)"),
-  "--dsw-alias-border-inverted": bg("rgba(224,226,234,0.10)", "rgba(26,27,33,0.10)"),
-  "--dsw-alias-border-inverted2": bg("rgba(224,226,234,0.14)", "rgba(26,27,33,0.14)"),
+  "--dsw-alias-border-l1": bg("rgba(27,27,31,0.06)", "rgba(227,226,230,0.08)"),
+  "--dsw-alias-border-l2": bg("rgba(27,27,31,0.12)", "rgba(227,226,230,0.14)"),
+  "--dsw-alias-border-l3": bg("rgba(27,27,31,0.16)", "rgba(227,226,230,0.20)"),
+  "--dsw-alias-border-l4": bg("rgba(27,27,31,0.24)", "rgba(227,226,230,0.28)"),
+  "--dsw-alias-border-inverted": bg("rgba(227,226,230,0.10)", "rgba(27,27,31,0.10)"),
+  "--dsw-alias-border-inverted2": bg("rgba(227,226,230,0.14)", "rgba(27,27,31,0.14)"),
 
   // 3) Brand / primary
   "--dsw-alias-brand-primary": bg(PRIMARY.p40, PRIMARY.p80),
@@ -83,9 +90,9 @@ export const materialYouTokens = {
   "--dsw-alias-label-primary-inverted": bg("#ffffff", PRIMARY.p20),
 
   // 5) Interactive / state layers (M3 state layer 8%/12%)
-  "--dsw-alias-interactive-bg-hover": bg("rgba(74,84,183,0.08)", "rgba(198,192,249,0.08)"),
-  "--dsw-alias-interactive-bg-active": bg("rgba(74,84,183,0.12)", "rgba(198,192,249,0.14)"),
-  "--dsw-alias-interactive-bg-hover-accent": bg("rgba(74,84,183,0.12)", "rgba(198,192,249,0.20)"),
+  "--dsw-alias-interactive-bg-hover": bg("rgba(1,90,194,0.08)", "rgba(173,198,255,0.08)"),
+  "--dsw-alias-interactive-bg-active": bg("rgba(1,90,194,0.12)", "rgba(173,198,255,0.14)"),
+  "--dsw-alias-interactive-bg-hover-accent": bg("rgba(1,90,194,0.12)", "rgba(173,198,255,0.20)"),
   "--dsw-alias-interactive-bg-hover-solid": bg(NEUTRAL.n96, NEUTRAL.n17),
   "--dsw-alias-interactive-bg-hover-danger": bg("rgba(186,26,26,0.08)", "rgba(255,180,171,0.12)"),
 
@@ -102,9 +109,9 @@ export const materialYouTokens = {
   "--dsw-alias-button-ghost-active-fill": bg(PRIMARY.p90, PRIMARY.p30),
   "--dsw-alias-button-ghost-active-hover": bg(VARIANT.v95, NEUTRAL.n24),
   "--dsw-alias-button-ghost-active-border": bg(VARIANT.v50, VARIANT.v60),
-  "--dsw-alias-button-tool-bar-fill": bg("rgba(92,93,107,0.4)", "rgba(224,226,234,0.4)"),
-  "--dsw-alias-button-tool-bar-fill-invisible": bg("rgba(92,93,107,0.24)", "rgba(224,226,234,0.24)"),
-  "--dsw-alias-button-tool-bar-hover": bg("rgba(92,93,107,0.5)", "rgba(224,226,234,0.5)"),
+  "--dsw-alias-button-tool-bar-fill": bg("rgba(92,94,102,0.4)", "rgba(227,226,230,0.4)"),
+  "--dsw-alias-button-tool-bar-fill-invisible": bg("rgba(92,94,102,0.24)", "rgba(227,226,230,0.24)"),
+  "--dsw-alias-button-tool-bar-hover": bg("rgba(92,94,102,0.5)", "rgba(227,226,230,0.5)"),
 
   // 7) Markdown surfaces
   "--dsw-alias-markdown-code-block": bg(NEUTRAL.n94, NEUTRAL.n12),
@@ -140,10 +147,12 @@ export const materialYouTokens = {
   "--dsw-alias-tooltip-bg": bg(NEUTRAL.n20, NEUTRAL.n80),
 
   // 11) Component-specific
-  "--dsw-specific-sidebar-fill": bg(NEUTRAL.n96, NEUTRAL.n4),
+  "--dsw-specific-sidebar-fill": bg(NEUTRAL.n99, NEUTRAL.n4),
   "--dsw-specific-sidebar-nav-item-hover": bg(NEUTRAL.n95, NEUTRAL.n12),
   "--dsw-specific-sidebar-nav-item-active": bg(PRIMARY.p90, PRIMARY.p30),
-  "--dsw-specific-sidebar-nav-item-active-accent": bg(PRIMARY.p40, PRIMARY.p80),
+  // primary-container tones: the "Recommended" badge background must contrast
+  // with its text token --dsw-alias-button-info-fill (p40/p80)
+  "--dsw-specific-sidebar-nav-item-active-accent": bg(PRIMARY.p90, PRIMARY.p30),
   "--dsw-specific-bubble": bg(PRIMARY.p95, PRIMARY.p30),
   "--dsw-specific-bubble-highlight": bg(PRIMARY.p80, PRIMARY.p40),
   "--dsw-specific-input-major": bg(NEUTRAL.n100, NEUTRAL.n22),

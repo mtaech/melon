@@ -10,7 +10,7 @@
 
 | 维度 | 取值 |
 | --- | --- |
-| 种子色 (seed) | `#4666FA`（HCT 色相 296，tone 50 处 chroma 60，偏靛蓝/紫） |
+| 种子色 (seed) | `#3B82F6`（HCT 色相 266.3，tone 55.6 处 chroma 64.2，干净科技蓝） |
 | 调色板模型 | HCT（Hue–Chroma–Tone），tone 0–100，非 HSV/HSL |
 | 色板数量 | 5 条：primary / secondary / tertiary / neutral / neutral-variant |
 | 字体 | Maple Mono NF CN（family name `"Maple Mono NF CN"`，经 System.Drawing 校验） |
@@ -21,30 +21,30 @@
 ## 2. 种子色与 HCT 色调色板
 
 Material You 的"动态取色"本质：从种子色提取 **色相 (hue)** 与 **彩度 (chroma)**，
-再沿 **色调 (tone，即明度 L*)** 轴生成一条 13 级色板。本皮肤种子 `#4666FA` 推导出：
+再沿 **色调 (tone，即明度 L*)** 轴生成一条 13 级色板。本皮肤种子 `#3B82F6` 推导出：
 
 ### primary（主色，chroma 60）
 
 | tone | 10 | 20 | 30 | 40 | 50 | 60 | 70 | 80 | 90 | 95 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 值 | `#1a192e` | `#2b2c58` | `#3a3f86` | `#4a54b7` | `#676cd3` | `#8486f0` | `#a6a3f5` | `#c6c0f9` | `#e3dffc` | `#f1effe` |
+| 值 | `#001a42` | `#002e6a` | `#004395` | `#015ac2` | `#3474dd` | `#538ef9` | `#81aaff` | `#adc6ff` | `#d8e2ff` | `#edf0ff` |
 
 ### neutral（中性色，用于 surface，chroma 4）
 
 | tone | 4 | 6 | 10 | 12 | 17 | 22 | 40 | 80 | 90 | 94 | 98 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 值 | `#0c0e15` | `#121319` | `#1a1b21` | `#1e1f25` | `#282a2f` | `#33353a` | `#5c5e65` | `#c4c6ce` | `#e0e2ea` | `#eceef5` | `#f8f9ff` |
+| 值 | `#0d0e11` | `#121316` | `#1b1b1f` | `#1f1f23` | `#292a2d` | `#343538` | `#5e5e62` | `#c7c6ca` | `#e3e2e6` | `#efedf1` | `#faf8fd` |
 
 ### neutral-variant（surface-variant / outline，chroma 8）
 
 | tone | 30 | 40 | 50 | 60 | 70 | 80 | 90 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 值 | `#454652` | `#5c5d6b` | `#757684` | `#8f909e` | `#a9aab9` | `#c4c5d4` | `#e0e1f1` |
+| 值 | `#44474f` | `#5c5e66` | `#75777f` | `#8e9099` | `#a9abb4` | `#c4c6d0` | `#e1e2ec` |
 
-### secondary（次要，chroma 16）与 tertiary（第三，chroma 20）
+### secondary（次要，chroma 24）与 tertiary（第三，chroma 32）
 
-- secondary：`#5e5c76`(40) / `#c7c5d4`(80)
-- tertiary：`#775843`(40) / `#d7c3b7`(80)
+- secondary：`#505e7d`(40) / `#b8c6ea`(80)
+- tertiary：`#77517c`(40) / `#e6b7e9`(80)
 
 > 完整色值见 `src/palette.css`。生成算法（HCT → sRGB）与 Material Color Utilities
 > 一致：`#6750A4` 用同算法可复现官方 baseline 色板（primary-40 = `#6750A4`），
@@ -57,22 +57,28 @@ DSH 皮肤通过覆盖 `--dsw-alias-*` / `--dsw-specific-*` 语义 token 生效
 
 | DSH token | M3 角色 | 浅色 (light) | 深色 (dark) |
 | --- | --- | --- | --- |
-| `--dsw-alias-bg-base` | surface | `#f8f9ff` | `#121319` |
-| `--dsw-alias-bg-layer-1` | surface-container | `#eceef5` | `#1e1f25` |
-| `--dsw-alias-bg-layer-2` | surface-container-high | `#e6e8ef` | `#282a2f` |
-| `--dsw-alias-bg-layer-3` | surface-container-highest | `#e0e2ea` | `#33353a` |
-| `--dsw-alias-bg-overlay` | surface-variant | `#e0e1f1` | `#37393f` |
-| `--dsw-alias-brand-primary` | primary | `#4a54b7` | `#c6c0f9` |
-| `--dsw-alias-label-primary` | on-surface | `#1a1b21` | `#e0e2ea` |
-| `--dsw-alias-label-secondary` | on-surface-variant | `#454652` | `#c4c5d4` |
-| `--dsw-alias-label-tertiary` | on-surface-variant | `#454652` | `#c4c5d4` |
-| `--dsw-alias-label-caption` | outline | `#5c5d6b` | `#a9aab9` |
-| `--dsw-alias-border-l2` | outline-variant | `rgba(26,27,33,.12)` | `rgba(224,226,234,.14)` |
-| `--dsw-alias-interactive-bg-hover` | state layer (8%) | `rgba(74,84,183,.08)` | `rgba(198,192,249,.08)` |
-| `--dsw-alias-button-primary-fill` | primary | `#4a54b7` | `#c6c0f9` |
+| `--dsw-alias-bg-base` | surface | `#ffffff` | `#121316` |
+| `--dsw-alias-bg-layer-1` | surface-container | `#faf8fd` | `#1f1f23` |
+| `--dsw-alias-bg-layer-2` | surface-container-high | `#f5f3f7` | `#292a2d` |
+| `--dsw-alias-bg-layer-3` | surface-container-highest | `#f2f0f4` | `#343538` |
+| `--dsw-alias-bg-overlay` | surface-variant | `#eff0fa` | `#38393c` |
+| `--dsw-alias-brand-primary` | primary | `#015ac2` | `#adc6ff` |
+| `--dsw-alias-label-primary` | on-surface | `#1b1b1f` | `#e3e2e6` |
+| `--dsw-alias-label-secondary` | on-surface-variant | `#44474f` | `#c4c6d0` |
+| `--dsw-alias-label-tertiary` | on-surface-variant | `#44474f` | `#c4c6d0` |
+| `--dsw-alias-label-caption` | outline | `#5c5e66` | `#a9abb4` |
+| `--dsw-alias-border-l2` | outline-variant | `rgba(27,27,31,.12)` | `rgba(227,226,230,.14)` |
+| `--dsw-alias-interactive-bg-hover` | state layer (8%) | `rgba(1,90,194,.08)` | `rgba(173,198,255,.08)` |
+| `--dsw-alias-button-primary-fill` | primary | `#015ac2` | `#adc6ff` |
 | `--dsw-alias-state-error-primary` | error | `#ba1a1a` | `#ffb4ab` |
-| `--dsw-specific-sidebar-fill` | surface-dim | `#f1f3fb` | `#0c0e15` |
-| `--dsw-specific-sidebar-nav-item-active` | secondary-container | `#e3dffc` | `#3a3f86` |
+| `--dsw-specific-sidebar-fill` | surface-dim | `#fefbff` | `#0d0e11` |
+| `--dsw-specific-sidebar-nav-item-active` | secondary-container | `#d8e2ff` | `#004395` |
+| `--dsw-specific-sidebar-nav-item-active-accent` | primary-container | `#d8e2ff` | `#004395` |
+
+> ⚠️ `--dsw-specific-sidebar-nav-item-active-accent` 与 `--dsw-alias-button-info-fill`
+> 必须保持对比：前者是 `ask_user_question`"推荐"徽章的**背景**，后者是徽章**文字**色。
+> 本皮肤取值 primary-container（p90/p30）作背景、primary（p40/p80）作文字，
+> 与默认主题"浅/深中性底 + 品牌蓝文字"的关系一致（曾因两者同取 primary 而撞色，已修复）。
 
 完整的 `--dsw-alias-*` 覆盖清单（约 80 个 token × 双外观）在 `src/tokens.mjs`。
 
@@ -123,6 +129,7 @@ Regular/Medium/Bold：
 theme-material-you/
 ├── package.json        # dsh.bundle.patch + dsh.client 声明（标准插件形态）
 ├── cordis.patch.yml    # 自带 patch：insert 皮肤行（bundle 层）
+├── build.mjs           # 构建脚本：src/tokens.mjs + fonts.css + palette.css → lib/client.js
 ├── README.md           # 本文档
 ├── fonts/              # 自托管 Maple Mono Regular woff2（6.1MB）
 ├── src/                # 源文件
@@ -188,7 +195,7 @@ dsh plugin --profile web add "file:E:/Dev/Code/dsh-material/theme-material-you"
   `--dsw-alias-*` 与 `--dsw-specific-*`，但若上游新增 token 需同步补。
 - **只随包携带 Regular 字重**：Medium/Bold 走浏览器合成或系统字体回退（见 §4）。
 - 若要更换种子色，改 `src/tokens.mjs` 里的调色板常量（或重新跑 HCT 生成器），
-  并同步 `src/palette.css`。
+  并同步 `src/palette.css`，再 `node build.mjs` 重新构建 `lib/client.js`。
 
 ## 9. 换种子色
 
@@ -199,3 +206,4 @@ dsh plugin --profile web add "file:E:/Dev/Code/dsh-material/theme-material-you"
 2. 替换 `src/tokens.mjs` 里 `NEUTRAL`/`VARIANT`/`PRIMARY`/`SECONDARY`/`TERTIARY`
    常量与 `ERROR`。
 3. 同步 `src/palette.css` 的参考值。
+4. 重新构建浏览器 bundle：`node build.mjs`（生成 `lib/client.js`）。
