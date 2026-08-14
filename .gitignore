@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Build / tooling temp artifacts
+.tmp-*/
+dist/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS noise
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,86 @@
+/* ============================================================================
+ * Material You skin — typography + shape tokens
+ * Font: Maple Mono NF CN (Nerd Font + CN, unhinted)
+ *   family name (verified via System.Drawing): "Maple Mono NF CN"
+ *   shipped weight: 400 Regular (woff2 self-hosted); other weights fall back
+ *   to the OS-installed family or browser-synthesized bold.
+ * ============================================================================ */
+
+/* ---- @font-face -----------------------------------------------------------------
+ * Self-host the shipped Regular weight so the skin works without OS-installed
+ * fonts. Only Regular is bundled (per request); 500/700 render via browser
+ * synthesized bold, or through the OS-installed family when present.
+ * -------------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: 'Maple Mono NF CN';
+  font-style: normal;
+  font-weight: 100 800; /* variable-ish range: let every weight resolve here */
+  src: url('../fonts/MapleMono-NF-CN-Regular.woff2') format('woff2');
+  font-display: swap;
+}
+
+/* ---- Typography role stack (Material 3 type scale → Maple Mono) ----------------
+ * M3 uses Roboto; we substitute Maple Mono NF CN, keeping M3's size/weight/
+ * line-height/letter-spacing rhythm. Maple Mono is a monospace with optical
+ * weight axis, so weights map cleanly onto M3's 400/500/700.
+ * ============================================================================ */
+
+:root {
+  /* Family + motion upstream vars (base.css only sets defaults) */
+  --dsw-font-family:
+    'Maple Mono NF CN', 'Maple Mono', 'SF Mono', 'JetBrains Mono', 'Fira Code',
+    Consolas, 'Liberation Mono', Menlo, Courier, 'PingFang SC', 'Microsoft YaHei', monospace;
+  --ds-font-family-code:
+    'Maple Mono NF CN', 'Maple Mono', 'SF Mono', 'JetBrains Mono', 'Fira Code',
+    Consolas, 'Liberation Mono', Menlo, Courier, 'PingFang SC', 'Microsoft YaHei', monospace;
+
+  /* M3 standardized motion */
+  --ds-ease-in-out: cubic-bezier(0.2, 0.0, 0.0, 1.0);       /* M3 emphasized */
+  --ds-ease-out: cubic-bezier(0.0, 0.0, 0.2, 1.0);
+  --ds-transition-duration: 0.2s;
+  --ds-transition-duration-fast: 0.1s;
+  --ds-transition-duration-slow: 0.3s;
+
+  /* ---- M3 type scale role tokens (size / weight / line-height / tracking) ---- */
+  /* displayed as CSS custom properties so components & skins can consume them */
+  --m3-typescale-display-large:  400 57px/64px -0.25px;
+  --m3-typescale-display-medium: 400 45px/52px 0px;
+  --m3-typescale-display-small:  400 36px/44px 0px;
+  --m3-typescale-headline-large: 400 32px/40px 0px;
+  --m3-typescale-headline-medium:400 28px/36px 0px;
+  --m3-typescale-headline-small: 400 24px/32px 0px;
+  --m3-typescale-title-large:   400 22px/28px 0px;
+  --m3-typescale-title-medium:  500 16px/24px 0.15px;
+  --m3-typescale-title-small:   500 14px/20px 0.1px;
+  --m3-typescale-body-large:    400 16px/24px 0.5px;
+  --m3-typescale-body-medium:   400 14px/20px 0.25px;
+  --m3-typescale-body-small:    400 12px/16px 0.4px;
+  --m3-typescale-label-large:   500 14px/20px 0.1px;
+  --m3-typescale-label-medium:  500 12px/16px 0.5px;
+  --m3-typescale-label-small:   500 11px/16px 0.5px;
+
+  /* ---- M3 shape system (corner radii) ---- */
+  --m3-shape-extra-small: 4px;
+  --m3-shape-small: 8px;
+  --m3-shape-medium: 12px;
+  --m3-shape-large: 16px;
+  --m3-shape-extra-large: 28px;
+  --m3-shape-full: 999px;
+
+  /* ---- M3 elevation / tonal surfaces (for reference & component use) ---- */
+  --m3-elevation-1: 0 1px 2px rgba(0,0,0,0.30), 0 1px 3px 1px rgba(0,0,0,0.15);
+  --m3-elevation-2: 0 1px 2px rgba(0,0,0,0.30), 0 2px 6px 2px rgba(0,0,0,0.15);
+  --m3-elevation-3: 0 1px 3px rgba(0,0,0,0.30), 0 4px 8px 3px rgba(0,0,0,0.15);
+}
+
+/* Reduced motion (M3 accessibility): disable custom easing */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ds-ease-in-out: linear;
+    --ds-ease-out: linear;
+    --ds-transition-duration: 0s;
+    --ds-transition-duration-fast: 0s;
+    --ds-transition-duration-slow: 0s;
+  }
+}
