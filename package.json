@@ -16,8 +16,14 @@
 	},
 	"files": [
 		"lib",
-		"src/assets"
+		"src/assets",
+		"cordis.patch.yml"
 	],
+	"dsh": {
+		"bundle": {
+			"patch": "cordis.patch.yml"
+		}
+	},
 	"license": "MIT",
 	"scripts": {
 		"build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
