@@ -43,7 +43,6 @@
 		"chrome-devtools-protocol"
 	],
 	"scripts": {
-		"prepare": "npm run build",
 		"build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
 		"check": "tsc -p tsconfig.json --noEmit",
 		"test": "bun test",
