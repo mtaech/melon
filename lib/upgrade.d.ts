@@ -13,6 +13,7 @@ export interface UpgradePlan {
     wouldChange: boolean;
     error?: string;
 }
+export declare function shellQuote(s: string): string;
 export interface RegistryLike {
     latestNpm(name: string): Promise<NpmLatest>;
     latestGit(user: string, repo: string): Promise<GitLatest>;

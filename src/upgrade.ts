@@ -25,6 +25,10 @@ export interface UpgradePlan {
 	error?: string;
 }
 
+export function shellQuote(s: string): string {
+	return `'${s.replace(/'/g, `'\\''`)}'`;
+}
+
 export interface RegistryLike {
 	latestNpm(name: string): Promise<NpmLatest>;
 	latestGit(user: string, repo: string): Promise<GitLatest>;
@@ -79,7 +83,7 @@ export async function planUpgrade(
 			targetLabel,
 			targetCommit: info.latestTagCommit ?? info.headSha,
 			newSpecifier: spec,
-			command: `cd ${JSON.stringify(profileDir)} && pnpm add ${name}@${spec}`,
+			command: `cd ${shellQuote(profileDir)} && pnpm add ${name}@${spec}`,
 			wouldChange,
 		};
 	}
@@ -105,7 +109,7 @@ export async function planUpgrade(
 		source: "npm",
 		targetLabel: info.latest,
 		newSpecifier: npmSpecifier(currentSpecifier, info.latest),
-		command: `cd ${JSON.stringify(profileDir)} && pnpm add ${name}@${info.latest}`,
+		command: `cd ${shellQuote(profileDir)} && pnpm add ${name}@${info.latest}`,
 		wouldChange,
 	};
 }

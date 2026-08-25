@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, writeFile, readFile, rm, mkdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { planUpgrade, applyUpgrade, planUninstall, applyUninstall, type RegistryLike, type CommandRunner } from "../src/upgrade.js";
+import { planUpgrade, applyUpgrade, planUninstall, applyUninstall, shellQuote, type RegistryLike, type CommandRunner } from "../src/upgrade.js";
 import type { ProfileSummary } from "../src/profile.js";
 import type { GitLatest, NpmLatest } from "../src/registry.js";
 
@@ -157,5 +157,23 @@ describe("applyUpgrade / applyUninstall", () => {
 		const p = profile({ "a": "^1.0.0" });
 		expect(planUninstall(p, "ghost").error).toContain("not part of this profile");
 		expect(planUninstall(profile({ "@deepseek-ai/x": "^1.0.0" }), "@deepseek-ai/x").error).toContain("core");
+	});
+});
+
+describe("shellQuote", () => {
+	test("wraps plain paths in single quotes", () => {
+		expect(shellQuote("/home/huang/.dsh/profiles/web")).toBe("'/home/huang/.dsh/profiles/web'");
+	});
+	test("escapes embedded single quotes", () => {
+		expect(shellQuote("/tmp/it's here")).toBe("'/tmp/it'\\''s here'");
+	});
+	test("survives empty string", () => {
+		expect(shellQuote("")).toBe("''");
+	});
+	test("plan commands embed the quoted profile dir without double quotes", async () => {
+		const dir = "/home/huang/.dsh/profiles/web";
+		const plan = await planUpgrade(profile({ "dsh-better-sidebar": "^0.14.0" }, dir), "dsh-better-sidebar", fakeRegistry({ npm: { latest: "0.16.1" } }), { version: "0.14.0" }, null);
+		expect(plan.command).toContain(`cd '${dir}' && pnpm add`);
+		expect(plan.command).not.toContain('"');
 	});
 });
