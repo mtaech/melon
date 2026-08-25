@@ -88,11 +88,19 @@ export function isCorePackage(name: string): boolean {
 	return /^@deepseek-ai\//.test(name) || /^@deepseek-harness-tui\//.test(name);
 }
 
-/** Parse `github:user/repo` or `github:user/repo#ref`; other forms return null. */
+/** Parse `github:user/repo` (with optional `#ref`) or a `git+https://github.com/user/repo[.git]` URL. */
 export function parseGithubSpec(spec: string): GithubSpec | null {
-	const m = /^github:([^/\s]+)\/([^#\s]+)(?:#(.+))?$/.exec(spec.trim());
-	if (!m) return null;
-	return { user: m[1]!, repo: m[2]!.replace(/\.git$/, ""), ref: m[3] ?? null };
+	const trimmed = spec.trim();
+	const forms = [
+		/^github:([^/\s]+)\/([^#\s]+)(?:#(.+))?$/,
+		/^(?:git\+)?https?:\/\/github\.com\/([^/\s]+)\/([^#\s]+?)(?:\.git)?(?:#(.+))?$/,
+	];
+	for (const m of forms) {
+		const hit = m.exec(trimmed);
+		if (!hit) continue;
+		return { user: hit[1]!, repo: hit[2]!.replace(/\.git$/, ""), ref: hit[3] ?? null };
+	}
+	return null;
 }
 
 export function sourceOf(specifier: string): PluginSource {

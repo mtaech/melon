@@ -6,6 +6,8 @@ describe("parseGithubSpec", () => {
 		expect(parseGithubSpec("github:mtaech/dsh-browser-tool")).toEqual({ user: "mtaech", repo: "dsh-browser-tool", ref: null });
 		expect(parseGithubSpec("github:mtaech/dsh-browser-tool#v0.2.0")).toEqual({ user: "mtaech", repo: "dsh-browser-tool", ref: "v0.2.0" });
 		expect(parseGithubSpec("github:mtaech/dsh-browser-tool.git")).toEqual({ user: "mtaech", repo: "dsh-browser-tool", ref: null });
+		expect(parseGithubSpec("git+https://github.com/mtaech/dsh-plugin-dashboard.git")).toEqual({ user: "mtaech", repo: "dsh-plugin-dashboard", ref: null });
+		expect(parseGithubSpec("git+https://github.com/mtaech/dsh-plugin-dashboard.git#v0.2.0")).toEqual({ user: "mtaech", repo: "dsh-plugin-dashboard", ref: "v0.2.0" });
 		expect(parseGithubSpec("^0.14.0")).toBeNull();
 	});
 });

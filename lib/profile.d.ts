@@ -24,7 +24,7 @@ export declare function loadProfile(name: string): Promise<ProfileSummary>;
 export declare function readProfileDir(dir: string, name?: string): Promise<ProfileSummary>;
 /** Host/core packages (bundled with dsh itself). */
 export declare function isCorePackage(name: string): boolean;
-/** Parse `github:user/repo` or `github:user/repo#ref`; other forms return null. */
+/** Parse `github:user/repo` (with optional `#ref`) or a `git+https://github.com/user/repo[.git]` URL. */
 export declare function parseGithubSpec(spec: string): GithubSpec | null;
 export declare function sourceOf(specifier: string): PluginSource;
 /** Installed package.json metadata from the profile's node_modules. */
