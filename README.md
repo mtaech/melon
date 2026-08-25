@@ -38,18 +38,45 @@ src/
     cli.ts                 serve|install|status
 ```
 
-## 使用
+## 安装
 
-```ts
-import { defineTool } from "dsh-browser-tool"; // 无单独工具；作为 dsh-tools 定义
+作为 DSH profile 的 bundle 挂载。**先停掉正在运行的 dsh，再装** —— 在服务运行期间改它的 `node_modules` 会让运行中的进程读到残缺的依赖树。
+
+```bash
+cd ~/.dsh/profiles/<你的 profile>          # 例如 web
+pnpm add github:mtaech/dsh-browser-tool
 ```
 
-实际接入 DSH 时在插件/预置里注册：
+然后在该 profile 的 `package.json` 里把它加进 `dsh.profile.bundles`（顺序放最后即可）：
 
-```ts
-import * as dshBrowserTool from "dsh-browser-tool";
-ctx.tools.register(dshBrowserTool.default ?? dshBrowserTool.definition);
+```json
+{
+  "dsh": {
+    "profile": {
+      "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-browser-tool"]
+    }
+  }
+}
 ```
+
+截图依赖 `sharp` 的原生模块，pnpm 默认会跳过它的构建脚本，需在 profile 的 `pnpm-workspace.yaml` 里放行：
+
+```yaml
+allowBuilds:
+  sharp: true
+```
+
+重启 dsh 后 `browser` 工具即出现在工具列表中。验证：
+
+```bash
+dsh --profile <你的 profile> --dump-config | grep dsh-browser-tool
+```
+
+### 关于依赖
+
+`@deepseek-ai/dsh-tools`、`@deepseek-ai/schemastery` 声明为 **peerDependencies 而非 dependencies**，这一点很关键：DSH 通过 `~/.dsh/profiles/node_modules/@deepseek-ai/` 的符号链接农场把宿主运行时暴露给插件，插件不声明就会向上查找命中宿主那一份。
+
+若把它们写进 `dependencies`，pnpm 会在 profile 里装第二份实体拷贝；`nodeLinker: hoisted` 下插件解析到近的那份、宿主用自己那份，两边模块实例不同。`dsh-tools` 的调度器挂在模块内的 `Symbol()` 上，跨实例读取得到 `undefined`，结果是**所有**工具调用都死在 `scheduler.prepare()`。
 
 ### 工具形态（LLM 视角）
 
@@ -85,8 +112,14 @@ npm run relay -- serve --port 9224
 
 ## 与 omp 的差异
 
-- 独立 npm 包：宿主运行时无法 import 包，按包方式交付；
-- 去掉 omp 专属 helper（read/write/env/…），保留浏览器面；
+- 以独立包交付，作为 profile bundle 挂载（宿主 Builtin 无法 import npm 包）；
+- 去掉 omp 专属 helper（read/write/env/…），保留浏览器面，调用即报清晰错误；
 - stealth 仅保留无侵入部分（`evaluateOnNewDocument` 脚本 + UA 覆盖），不套 omp 反检测 patch；
 - 截图模型副本经 `sharp` 实现（Bun.Image 移除）；
 - final-expression 注入用 `@babel/parser`（无 AST 不引入 babel 全家桶）。
+
+## 许可
+
+[MIT](./LICENSE) © 画野 (mtaech)
+
+浏览器核心与 Browser Relay 的逻辑移植自 oh-my-pi 的 browser 工具。

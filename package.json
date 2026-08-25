@@ -25,7 +25,25 @@
 		}
 	},
 	"license": "MIT",
+	"author": "画野 (mtaech)",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/mtaech/dsh-browser-tool.git"
+	},
+	"homepage": "https://github.com/mtaech/dsh-browser-tool#readme",
+	"bugs": {
+		"url": "https://github.com/mtaech/dsh-browser-tool/issues"
+	},
+	"keywords": [
+		"dsh",
+		"dsh-plugin",
+		"cordis",
+		"browser",
+		"puppeteer",
+		"chrome-devtools-protocol"
+	],
 	"scripts": {
+		"prepare": "npm run build",
 		"build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
 		"check": "tsc -p tsconfig.json --noEmit",
 		"test": "bun test",
