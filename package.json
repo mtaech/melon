@@ -30,13 +30,10 @@
 		"check": "tsc -p tsconfig.json --noEmit",
 		"test": "bun test",
 		"smoke": "npm run build && node scripts/smoke.mjs",
-		"relay": "node lib/relay/cli.js",
-		"relay:smoke": "bun test/test/smoke.ts"
+		"relay": "node lib/relay/cli.js"
 	},
 	"dependencies": {
 		"@babel/parser": "^8.0.4",
-		"@deepseek-ai/dsh-tools": "^0.1.1-rc.2",
-		"@deepseek-ai/schemastery": "^3.18.1",
 		"@mozilla/readability": "^0.5.0",
 		"@puppeteer/browsers": "^2.13.2",
 		"linkedom": "^0.18.13",
@@ -45,7 +42,21 @@
 		"turndown": "^7.2.4",
 		"ws": "^8.18.0"
 	},
+	"peerDependencies": {
+		"@deepseek-ai/dsh-tools": "^0.1.1-rc.2",
+		"@deepseek-ai/schemastery": "^3.18.1"
+	},
+	"peerDependenciesMeta": {
+		"@deepseek-ai/dsh-tools": {
+			"optional": true
+		},
+		"@deepseek-ai/schemastery": {
+			"optional": true
+		}
+	},
 	"devDependencies": {
+		"@deepseek-ai/dsh-tools": "^0.1.1-rc.2",
+		"@deepseek-ai/schemastery": "^3.18.1",
 		"@types/node": "^24.0.0",
 		"@types/turndown": "^5.0.6",
 		"@types/ws": "^8.5.13",
