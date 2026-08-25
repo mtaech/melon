@@ -11,6 +11,7 @@ import { execFile } from "node:child_process";
 import { detectBrowserPlatform, resolveBuildId, computeExecutablePath, install, Browser as PpbBrowser } from "@puppeteer/browsers";
 import type { Browser, CDPSession, Page, default as Puppeteer, Target } from "puppeteer-core";
 import { readAssetText, assetPath } from "./../asset.js";
+import { adoptDonorChromium, findDonorChromium } from "./donor-chromium.js";
 import { cacheDir, logger, sleep, which, puppeteerExecutablePathFromEnv } from "./../util.js";
 import { ToolError } from "./../errors.js";
 
@@ -227,6 +228,10 @@ export async function ensureChromiumExecutable(): Promise<string | undefined> {
 		const buildId = await resolveBuildId(PpbBrowser.CHROME, platform, "stable");
 		const executablePath = computeExecutablePath({ browser: PpbBrowser.CHROME, buildId, cacheDir: cacheDirPath, platform });
 		if (fs.existsSync(executablePath)) return executablePath;
+		// Before paying for a download, adopt a Chromium another @puppeteer/browsers
+		// consumer already has (oh-my-pi's cache, puppeteer's own default cache).
+		const donor = findDonorChromium(platform, buildId);
+		if (donor !== undefined) return adoptDonorChromium(donor, cacheDirPath);
 		logger.warn("Downloading Chromium (Chrome for Testing) — first browser use", { buildId, platform, cacheDir: cacheDirPath });
 		await install({
 			browser: PpbBrowser.CHROME,

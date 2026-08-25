@@ -99,8 +99,23 @@ browser action:"close"   name:"wiki"
 | `DSH_BROWSER_SCREENSHOT_DIR` | 截图落盘目录 |
 | `DSH_BROWSER_NO_WEBP` | 1 时模型副本用 PNG |
 | `DSH_BROWSER_INSTALL_CHROME` | 0 不自动下载 Chromium |
+| `DSH_BROWSER_DONOR_CACHE` | 额外的 Chromium 复用来源（`@puppeteer/browsers` 缓存目录） |
 | `PUPPETEER_EXECUTABLE_PATH` / `DSH_BROWSER_EXECUTABLE` | 指定 Chromium 可执行文件 |
 | `PUPPETEER_PROXY_*` | 下载/Chrome 代理（透传 puppeteer） |
+
+### Chromium 复用
+
+需要 headless Chromium 时按以下顺序解析，只有全部落空才会下载：
+
+1. `PUPPETEER_EXECUTABLE_PATH` / `DSH_BROWSER_EXECUTABLE`；
+2. 系统已安装的 Chrome/Chromium（macOS 除外，那里优先用受管版本）；
+3. 本包缓存里已有的 Chrome for Testing；
+4. **其他工具缓存里已下载的版本 —— 直接复制，不重新下载**：`DSH_BROWSER_DONOR_CACHE`、`~/.omp/puppeteer`（oh-my-pi）、`PUPPETEER_CACHE_DIR`、`~/.cache/puppeteer`；
+5. 以上都没有，才从 Chrome for Testing 下载。
+
+第 4 步只认 `@puppeteer/browsers` 的缓存布局（`chrome/<platform>-<buildId>/`）。构建号完全一致时直接采用，否则取该缓存里最新的一版（仍然省掉一次下载）。复制的是整个构建目录并保留可执行位，落到本包缓存后即与来源解耦——oh-my-pi 清理自己的缓存不会影响这里。复制失败时退化为直接启动来源里的二进制。
+
+Playwright 的缓存（`chromium-<revision>`）不在支持范围：它的 revision 编号无法映射到 Chrome for Testing 的 buildId。
 
 ## 开发
 
