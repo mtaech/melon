@@ -44,12 +44,17 @@ export class Registry {
 	private gitCache = new Map<string, CacheEntry<GitLatest>>();
 	private readonly fetchFn: typeof fetch;
 	private readonly registryUrl: string;
-	private readonly githubToken: string | undefined;
+	private githubToken: string | undefined;
 
 	constructor(options: RegistryOptions = {}) {
 		this.fetchFn = options.fetchFn ?? globalThis.fetch;
 		this.registryUrl = (options.registryUrl ?? process.env.npm_config_registry ?? "https://registry.npmjs.org").replace(/\/$/, "");
 		this.githubToken = options.githubToken ?? process.env.GITHUB_TOKEN;
+	}
+
+	/** Set the GitHub token after construction (e.g. fetched from `gh auth token` at boot). */
+	setGithubToken(token: string | undefined): void {
+		this.githubToken = token ?? this.githubToken;
 	}
 
 	/** Drop all cached lookups (UI refresh / force). */
@@ -104,7 +109,7 @@ export class Registry {
 				this.fetchFn(`https://api.github.com/repos/${user}/${repo}/tags`, { headers, signal: AbortSignal.timeout(20_000) }),
 				this.fetchFn(`https://api.github.com/repos/${user}/${repo}/commits/HEAD`, { headers, signal: AbortSignal.timeout(20_000) }),
 			]);
-			const error = !tagsRes.ok ? `github ${tagsRes.status} ${tagsRes.statusText} (rate limit?)` : null;
+			const error = !tagsRes.ok ? `github ${tagsRes.status} ${tagsRes.statusText}${tagsRes.status === 404 ? " (private repo? set GITHUB_TOKEN or gh auth)" : " (rate limit?)"}` : null;
 			const headSha = headRes.ok ? (((await headRes.json()) as { sha?: unknown }).sha as string | null | undefined) ?? null : null;
 
 			let latestTag: string | null = null;

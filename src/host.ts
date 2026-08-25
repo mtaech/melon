@@ -171,10 +171,25 @@ async function buildInventory(profile: ProfileSummary, registry: Registry): Prom
 	});
 }
 
+function extractGhToken(output: string): string | undefined {
+	const token = output.trim();
+	if (!token || token.length < 20 || /error|fail/i.test(token)) return undefined;
+	return token;
+}
+
 export function apply(ctx: Context, options: HostOptions = {}): () => void {
-	const registry = options.registry ?? new Registry();
 	const profileDir = resolveProfileDir(options.profileDir);
 	const runner = subprocessRunner(ctx.subprocess);
+	const registry = options.registry ?? new Registry();
+	// private GitHub repos need a token; borrow the gh CLI's (the dsh process
+	// env carries its auth). Best-effort and async: later lookups pick it up.
+	if (!options.registry) {
+		runner(["gh", "auth", "token"], { cwd: process.cwd(), timeoutMs: 5000 })
+			.then(({ code, output }) => {
+				if (code === 0) registry.setGithubToken(extractGhToken(output));
+			})
+			.catch(() => undefined);
+	}
 
 	const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
 		try {

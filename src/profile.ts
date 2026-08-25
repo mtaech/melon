@@ -138,7 +138,7 @@ export function readLockCommit(lockText: string, name: string): string | null {
 	let depVersion: string | null = null;
 	const record = (n: string | null, v: string | null): string | null => {
 		if (n === name && v) {
-			const sha = /tar\.gz\/([0-9a-f]{40})/.exec(v)?.[1];
+			const sha = /tar\.gz\/([0-9a-f]{40})|#([0-9a-f]{40})$/.exec(v)?.[1] ?? /tar\.gz\/([0-9a-f]{40})|#([0-9a-f]{40})$/.exec(v)?.[2];
 			if (sha) return sha;
 		}
 		return null;
@@ -179,6 +179,12 @@ export function readLockCommit(lockText: string, name: string): string | null {
 				depVersion = kv[2]!;
 				const hit = record(depName, depVersion);
 				if (hit) return hit;
+			}
+			if (kv && kv[1] === "specifier" && /^git\+https?:\/\//.test(kv[2]!)) {
+				// git+https specifiers resolve to `...#<sha>` versions; the record()
+				// regex below handles both forms when version arrives.
+				const resolvedSha = /#[0-9a-f]{40}$/.exec(kv[2]!)?.[0]?.slice(1);
+				if (resolvedSha && depName === name) return resolvedSha;
 			}
 		}
 	}

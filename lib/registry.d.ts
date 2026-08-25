@@ -32,8 +32,10 @@ export declare class Registry {
     private gitCache;
     private readonly fetchFn;
     private readonly registryUrl;
-    private readonly githubToken;
+    private githubToken;
     constructor(options?: RegistryOptions);
+    /** Set the GitHub token after construction (e.g. fetched from `gh auth token` at boot). */
+    setGithubToken(token: string | undefined): void;
     /** Drop all cached lookups (UI refresh / force). */
     clearCache(): void;
     latestNpm(name: string): Promise<NpmLatest>;
