@@ -43,7 +43,7 @@ dsh --profile <你的 profile> --dump-config | grep dsh-plugin-dashboard
 ### 工作原理
 
 - **node 面**（`exports "."`）：cordis 插件，注入 dsh 原生的 `webServer` + `subprocess` 服务——`ctx.webServer.register` 挂 `prefix` 路由 `/plugins/dsh-plugin-dashboard/api`（`/list`、`/upgrade`、`/uninstall`），**零裸 `child_process`**：命令执行全部经 `ctx.subprocess.spawn`（树级终止、bounded collect），版本查询用 node 运行时自带 `fetch`（dsh 的 node，无额外进程）。dsh 进程的 cwd 就是 profile 目录，所有读写都针对它。
-- **浏览器面**（`exports "./client"`）：esbuild 打包成 `window.__ModuleLoader__.load({ id, factory })` lazy-CJS factory（脚本 `scripts/build-client.mjs`）；声明 `dsh.client.inject: ["@deepseek-ai/dsh-client-runtime", "@deepseek-ai/dsh-client-ui-slots"]`，运行时由 shell 注入 slots 服务，`ctx.slots.inject('settings.plugins.tab', ...)` 注册 tab。组件用 `React.createElement` 手写（零 JSX），避免外部包的 JSX 构建链；`react` 及 `@deepseek-ai/*` 全部 external，从平台模块表解析。
+- **浏览器面**（`exports "./client"`）：esbuild 打包成 `window.__ModuleLoader__.load({ id, factory })` lazy-CJS factory（脚本 `scripts/build-client.mjs`）。**ModuleLoader 契约有三个硬约束**：factory 只接收 `require` 且必须 `return module.exports`（`<script>` 环境无 module/exports，需在 factory 体内自声明 `var module = { exports: {} }; var exports = module.exports;`）；entry 导出需 `treeShaking: false` 防止 `export const inject` 被内联删除；模块必须真实 `export const inject`（声明服务注入，运行时经此拿 `ctx.slots`）。组件用 `React.createElement` 手写（零 JSX）；`react` 及 `@deepseek-ai/*` 全部 external，从平台模块表解析；`dsh.client.inject` 元数据同时提供给 shell 的注入装配。
 - **client→host 通信**：浏览器直接 `fetch` 同源 `/plugins/dsh-plugin-dashboard/api/*`——走 `ctx.webServer` 路由，不依赖 typert Remote 装配（那条路需要进 dsh 主仓库 `api/remotes` 静态登记）。
 
 ### 配置（均可选，环境变量优先）

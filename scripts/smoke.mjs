@@ -141,6 +141,9 @@ await rm(root, { recursive: true, force: true });
 	check("client.cjs is a ModuleLoader factory", client.includes('window.__ModuleLoader__.load({') && client.includes('factory: (require) =>') && client.includes('"dsh-plugin-dashboard"'), "");
 	check("client requires react from the shell", client.includes('require("react")'), "");
 	check("client registers the plugin-versions tab", client.includes('plugin-versions'), "");
+	// ModuleLoader contract: factory declares module/exports, returns module.exports
+	check("client factory returns exports", client.includes('return module.exports;'), "");
+	check("client exports inject", client.includes('inject: () => inject') && client.includes('var inject = ["slots"]'), "");
 }
 
 // ── 3. real web profile through the host plugin (network tolerant) ──
