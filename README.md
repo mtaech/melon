@@ -47,6 +47,8 @@ cd ~/.dsh/profiles/<你的 profile>          # 例如 web
 pnpm add github:mtaech/dsh-browser-tool
 ```
 
+`lib/` 已随仓库提交，装完即可用，无需本地构建。
+
 然后在该 profile 的 `package.json` 里把它加进 `dsh.profile.bundles`（顺序放最后即可）：
 
 ```json
