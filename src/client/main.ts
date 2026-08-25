@@ -306,6 +306,9 @@ function UpgradeModal({ modal, onClose, onApply }: { modal: ModalState; onClose:
 	);
 }
 
+/** Services the browser plugin needs: the slots registry (settings tab contribution). */
+export const inject = ["slots"];
+
 export function apply(ctx: ClientContext): void {
 	const api = `${ROUTE_PREFIX}`;
 	const list = async (): Promise<{ dshRunning: boolean; plugins: PluginEntryDto[] }> => {

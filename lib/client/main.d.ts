@@ -38,4 +38,6 @@ export interface UninstallPlanDto {
     wouldRemove: boolean;
     error?: string;
 }
+/** Services the browser plugin needs: the slots registry (settings tab contribution). */
+export declare const inject: string[];
 export declare function apply(ctx: ClientContext): void;
