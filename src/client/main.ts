@@ -263,7 +263,7 @@ function DashboardTab(props: TabProps): React.ReactElement {
 		React.createElement(
 			"div",
 			{ style: S.header },
-			React.createElement("strong", null, `插件版本（${entries.length}）`),
+			React.createElement("strong", null, `插件管理（${entries.length}）`),
 			React.createElement("button", { style: S.btn, onClick: reload }, "刷新"),
 		),
 		loading
@@ -345,7 +345,7 @@ export function apply(ctx: ClientContext): void {
 			name: "settings.plugins.tab",
 			id: "plugin-versions",
 			order: 20,
-			label: () => "插件版本",
+			label: () => "插件管理",
 			inject: injected,
 		}, DashboardTab),
 	);
