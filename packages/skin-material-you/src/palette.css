@@ -1,0 +1,62 @@
+/* ============================================================================
+ * Material You tonal palettes (reference)
+ * Seed: #3B82F6  —  HCT hue 266.3, chroma 64.2 @ tone 55.6 (clean tech blue)
+ * Generated with the Material Color Utilities HCT algorithm.
+ * ============================================================================ */
+:root {
+  --m3-palette-primary-10: #001a42;
+  --m3-palette-primary-20: #002e6a;
+  --m3-palette-primary-30: #004395;
+  --m3-palette-primary-40: #015ac2;
+  --m3-palette-primary-50: #3474dd;
+  --m3-palette-primary-60: #538ef9;
+  --m3-palette-primary-70: #81aaff;
+  --m3-palette-primary-80: #adc6ff;
+  --m3-palette-primary-90: #d8e2ff;
+  --m3-palette-primary-95: #edf0ff;
+  --m3-palette-primary-100: #ffffff;
+
+  --m3-palette-neutral-0: #000000;
+  --m3-palette-neutral-4: #0d0e11;
+  --m3-palette-neutral-6: #121316;
+  --m3-palette-neutral-10: #1b1b1f;
+  --m3-palette-neutral-12: #1f1f23;
+  --m3-palette-neutral-17: #292a2d;
+  --m3-palette-neutral-20: #303034;
+  --m3-palette-neutral-22: #343538;
+  --m3-palette-neutral-24: #38393c;
+  --m3-palette-neutral-30: #46464a;
+  --m3-palette-neutral-35: #525256;
+  --m3-palette-neutral-40: #5e5e62;
+  --m3-palette-neutral-50: #77777a;
+  --m3-palette-neutral-60: #919094;
+  --m3-palette-neutral-70: #ababaf;
+  --m3-palette-neutral-80: #c7c6ca;
+  --m3-palette-neutral-87: #dbd9dd;
+  --m3-palette-neutral-90: #e3e2e6;
+  --m3-palette-neutral-92: #e9e7ec;
+  --m3-palette-neutral-94: #efedf1;
+  --m3-palette-neutral-95: #f2f0f4;
+  --m3-palette-neutral-96: #f5f3f7;
+  --m3-palette-neutral-98: #faf8fd;
+  --m3-palette-neutral-100: #ffffff;
+
+  --m3-palette-neutral-variant-30: #44474f;
+  --m3-palette-neutral-variant-40: #5c5e66;
+  --m3-palette-neutral-variant-50: #75777f;
+  --m3-palette-neutral-variant-60: #8e9099;
+  --m3-palette-neutral-variant-70: #a9abb4;
+  --m3-palette-neutral-variant-80: #c4c6d0;
+  --m3-palette-neutral-variant-90: #e1e2ec;
+  --m3-palette-neutral-variant-95: #eff0fa;
+
+  --m3-palette-error: #ba1a1a;
+  --m3-palette-error-container: #ffdad6;
+  --m3-palette-on-error-container: #410002;
+}
+
+body[data-ds-dark-theme] {
+  --m3-palette-error: #ffb4ab;
+  --m3-palette-error-container: #93000a;
+  --m3-palette-on-error-container: #690005;
+}
