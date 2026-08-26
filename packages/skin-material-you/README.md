@@ -161,7 +161,7 @@ dsh-material/                 # 仓库根 = 插件包根（DSH 标准形态）
   ```yaml
   - insert:
       - id: ui-skin-material-you
-        name: '@deepseek-ai/dsh-skin-material-you'
+        name: 'dsh-skin-material-you'
   ```
 - **`exports["./client"]` 为简单字符串**，指向 `lib/client.js` 浏览器 bundle。
 
@@ -198,10 +198,10 @@ dsh plugin --profile web add "file:E:/Dev/Code/dsh-material"
 > `Ignored build scripts`，在 `profiles/web/pnpm-workspace.yaml` 的 `allowBuilds`
 > 里加入包名后重新执行即可（本包无需构建脚本也能直接运行，`lib/` 已随仓库提交）。
 
-卸载：`dsh plugin --profile web remove @deepseek-ai/dsh-skin-material-you`
+卸载：`dsh plugin --profile web remove dsh-skin-material-you`
 
 验证：`dsh --profile web --dump-config` 应看到皮肤行，且标记来源为
-`# == @deepseek-ai/dsh-skin-material-you`（bundle 自带 patch 层）。
+`# == dsh-skin-material-you`（bundle 自带 patch 层）。
 
 ## 8. 已知限制
 

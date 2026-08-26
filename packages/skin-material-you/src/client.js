@@ -9,7 +9,7 @@
 import { materialYouTokens } from './tokens.mjs';
 import fontStyles from './fonts.css?inline';
 
-const SOURCE = '@deepseek-ai/dsh-skin-material-you';
+const SOURCE = 'dsh-skin-material-you';
 const STYLE_TAG_ID = SOURCE + '/material-you-styles';
 
 function injectStyles(css) {

@@ -1,42 +1,75 @@
 {
-  "name": "@deepseek-ai/dsh-skin-material-you",
-  "description": "Material You (Material 3) skin for DeepSeek Harness: HCT tonal palette + Maple Mono NF CN typography",
-  "version": "0.1.0-rc.2",
-  "private": true,
-  "type": "module",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./lib/index.d.ts",
-      "default": "./lib/index.js"
-    },
-    "./client": "./lib/client.js",
-    "./cordis.patch.yml": "./cordis.patch.yml",
-    "./package.json": "./package.json"
-  },
-  "files": [
-    "lib",
-    "src",
-    "fonts",
-    "cordis.patch.yml",
-    "README.md"
-  ],
-  "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    },
-    "client": {
-      "inject": [
-        "@deepseek-ai/dsh-client-runtime",
-        "@deepseek-ai/dsh-client-ui-theme"
-      ],
-      "platform": "web"
-    }
-  },
-  "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-client-ui-theme": "^0.1.0-rc.6"
-  },
-  "license": "MIT"
+	"name": "dsh-skin-material-you",
+	"version": "0.1.0",
+	"description": "Material You (Material 3) skin for DeepSeek Harness: HCT tonal palette + Maple Mono NF CN typography",
+	"type": "module",
+	"main": "lib/index.js",
+	"types": "lib/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./lib/index.d.ts",
+			"default": "./lib/index.js"
+		},
+		"./client": "./lib/client.js",
+		"./cordis.patch.yml": "./cordis.patch.yml",
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"lib",
+		"src",
+		"fonts",
+		"cordis.patch.yml",
+		"README.md"
+	],
+	"dsh": {
+		"bundle": {
+			"patch": "./cordis.patch.yml"
+		},
+		"client": {
+			"inject": [
+				"@deepseek-ai/dsh-client-runtime",
+				"@deepseek-ai/dsh-client-ui-theme"
+			],
+			"platform": "web"
+		}
+	},
+	"license": "MIT",
+	"author": "画野 (mtaech)",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/mtaech/melon.git",
+		"directory": "packages/skin-material-you"
+	},
+	"homepage": "https://github.com/mtaech/melon/tree/main/packages/skin-material-you#readme",
+	"bugs": {
+		"url": "https://github.com/mtaech/melon/issues"
+	},
+	"keywords": [
+		"dsh",
+		"dsh-plugin",
+		"dsh-skin",
+		"material-you",
+		"material-3",
+		"theme"
+	],
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	},
+	"scripts": {
+		"build": "node build.mjs",
+		"prepublishOnly": "pnpm run build"
+	},
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "^4.0.1",
+		"@deepseek-ai/dsh-client-ui-theme": "^0.1.1-rc.2"
+	},
+	"peerDependenciesMeta": {
+		"@deepseek-ai/cordis": {
+			"optional": true
+		},
+		"@deepseek-ai/dsh-client-ui-theme": {
+			"optional": true
+		}
+	}
 }

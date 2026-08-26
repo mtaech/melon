@@ -1,0 +1,27 @@
+{
+	"name": "melon",
+	"private": true,
+	"version": "0.0.0",
+	"description": "DSH (DeepSeek Harness) 插件与皮肤单仓库",
+	"type": "module",
+	"license": "MIT",
+	"author": "画野 (mtaech)",
+	"packageManager": "pnpm@11.22.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/mtaech/melon.git"
+	},
+	"engines": {
+		"node": ">=20"
+	},
+	"scripts": {
+		"build": "pnpm -r build",
+		"check": "pnpm -r check",
+		"test": "pnpm -r test",
+		"smoke": "pnpm -r smoke",
+		"release": "pnpm -r --filter='!melon' publish --access public --no-git-checks"
+	},
+	"devDependencies": {
+		"typescript": "catalog:"
+	}
+}

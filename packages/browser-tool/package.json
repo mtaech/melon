@@ -27,11 +27,12 @@
 	"author": "画野 (mtaech)",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/mtaech/dsh-browser-tool.git"
+		"url": "git+https://github.com/mtaech/melon.git",
+		"directory": "packages/browser-tool"
 	},
-	"homepage": "https://github.com/mtaech/dsh-browser-tool#readme",
+	"homepage": "https://github.com/mtaech/melon/tree/main/packages/browser-tool#readme",
 	"bugs": {
-		"url": "https://github.com/mtaech/dsh-browser-tool/issues"
+		"url": "https://github.com/mtaech/melon/issues"
 	},
 	"keywords": [
 		"dsh",
@@ -41,12 +42,17 @@
 		"puppeteer",
 		"chrome-devtools-protocol"
 	],
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	},
 	"scripts": {
 		"build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
 		"check": "tsc -p tsconfig.json --noEmit",
 		"test": "bun test",
-		"smoke": "npm run build && node scripts/smoke.mjs",
-		"relay": "node lib/relay/cli.js"
+		"smoke": "pnpm run build && node scripts/smoke.mjs",
+		"relay": "node lib/relay/cli.js",
+		"prepublishOnly": "pnpm run build"
 	},
 	"dependencies": {
 		"@babel/parser": "^8.0.4",
@@ -71,11 +77,11 @@
 		}
 	},
 	"devDependencies": {
-		"@deepseek-ai/dsh-tools": "^0.1.1-rc.2",
-		"@deepseek-ai/schemastery": "^3.18.1",
-		"@types/node": "^24.0.0",
+		"@deepseek-ai/dsh-tools": "catalog:",
+		"@deepseek-ai/schemastery": "catalog:",
+		"@types/node": "catalog:",
 		"@types/turndown": "^5.0.6",
 		"@types/ws": "^8.5.13",
-		"typescript": "^5.8.0"
+		"typescript": "catalog:"
 	}
 }

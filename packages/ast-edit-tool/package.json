@@ -1,7 +1,6 @@
 {
 	"name": "dsh-ast-edit-tool",
 	"version": "0.1.0",
-	"private": true,
 	"description": "DSH structural code-edit tool: preview and apply ast-grep rewrites ($NAME / $$$ARGS metavariables) over files, directories, and globs, ported from oh-my-pi's ast_edit.",
 	"type": "module",
 	"main": "lib/index.js",
@@ -27,11 +26,12 @@
 	"author": "画野 (mtaech)",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/mtaech/dsh-ast-edit-tool.git"
+		"url": "git+https://github.com/mtaech/melon.git",
+		"directory": "packages/ast-edit-tool"
 	},
-	"homepage": "https://github.com/mtaech/dsh-ast-edit-tool#readme",
+	"homepage": "https://github.com/mtaech/melon/tree/main/packages/ast-edit-tool#readme",
 	"bugs": {
-		"url": "https://github.com/mtaech/dsh-ast-edit-tool/issues"
+		"url": "https://github.com/mtaech/melon/issues"
 	},
 	"keywords": [
 		"dsh",
@@ -41,11 +41,16 @@
 		"codemod",
 		"structural-edit"
 	],
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	},
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
 		"check": "tsc -p tsconfig.json --noEmit",
 		"test": "bun test",
-		"smoke": "npm run build && node scripts/smoke.mjs"
+		"smoke": "pnpm run build && node scripts/smoke.mjs",
+		"prepublishOnly": "pnpm run build"
 	},
 	"dependencies": {
 		"@ast-grep/cli": "^0.45.2",
@@ -65,9 +70,9 @@
 		}
 	},
 	"devDependencies": {
-		"@deepseek-ai/dsh-tools": "^0.1.1-rc.2",
-		"@deepseek-ai/schemastery": "^3.18.1",
-		"@types/node": "^24.0.0",
-		"typescript": "^5.8.0"
+		"@deepseek-ai/dsh-tools": "catalog:",
+		"@deepseek-ai/schemastery": "catalog:",
+		"@types/node": "catalog:",
+		"typescript": "catalog:"
 	}
 }
