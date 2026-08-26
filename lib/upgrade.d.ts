@@ -9,6 +9,8 @@ export interface UpgradePlan {
     targetLabel: string;
     targetCommit: string | null;
     newSpecifier: string;
+    /** Profile name for the native `dsh plugin --profile <name>` command form. */
+    profileName: string;
     command: string;
     wouldChange: boolean;
     /** Published-at (npm) / committer date (git) of the installed version; null when unknowable. */
@@ -17,7 +19,6 @@ export interface UpgradePlan {
     latestVersionDate: string | null;
     error?: string;
 }
-export declare function shellQuote(s: string): string;
 export interface RegistryLike {
     latestNpm(name: string): Promise<NpmLatest>;
     latestGit(user: string, repo: string): Promise<GitLatest>;
@@ -51,6 +52,8 @@ export interface UninstallPlan {
     inBundles: boolean;
     /** True when the package can actually be removed. */
     wouldRemove: boolean;
+    /** Profile name for the native `dsh plugin --profile <name> remove` form. */
+    profileName: string;
     error?: string;
 }
 /** Plan the removal of a package from the profile (deps and/or bundles). */

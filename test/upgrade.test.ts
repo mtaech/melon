@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, writeFile, readFile, rm, mkdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { planUpgrade, applyUpgrade, planUninstall, applyUninstall, shellQuote, type RegistryLike, type CommandRunner } from "../src/upgrade.js";
+import { planUpgrade, applyUpgrade, planUninstall, applyUninstall, type RegistryLike, type CommandRunner } from "../src/upgrade.js";
 import type { ProfileSummary } from "../src/profile.js";
 import type { GitLatest, NpmLatest } from "../src/registry.js";
 
@@ -132,7 +132,8 @@ describe("applyUpgrade / applyUninstall", () => {
 			const plan = await planUpgrade(profile({ "dsh-x": "^0.14.0" }, dir), "dsh-x", fakeRegistry({ npm: { latest: "0.15.1" } }), { version: "0.14.0" }, null);
 			const result = await applyUpgrade(dir, plan, runner);
 
-			expect(calls).toEqual([["pnpm", "install"]]);
+			expect(calls).toEqual([["dsh", "plugin", "--profile", "t", "add", "dsh-x@^0.15.1"]]);
+			expect(plan.command).toBe("dsh plugin --profile t add dsh-x@0.15.1");
 			const patched = JSON.parse(await readFile(path.join(dir, "package.json"), "utf8")) as { dependencies: Record<string, string> };
 			expect(patched.dependencies["dsh-x"]).toBe("^0.15.1");
 			expect(result.output).toBe("Done in 1s");
@@ -149,7 +150,7 @@ describe("applyUpgrade / applyUninstall", () => {
 		try {
 			const runner: CommandRunner = async () => ({ code: 1, output: "ERR! network" });
 			const plan = await planUpgrade(profile({ "dsh-x": "1.0.0" }, dir), "dsh-x", fakeRegistry({ npm: { latest: "2.0.0" } }), { version: "1.0.0" }, null);
-			await expect(applyUpgrade(dir, plan, runner)).rejects.toThrow(/pnpm install exited 1/);
+			await expect(applyUpgrade(dir, plan, runner)).rejects.toThrow(/dsh plugin add exited 1/);
 			const restored = JSON.parse(await readFile(path.join(dir, "package.json"), "utf8")) as { dependencies: Record<string, string> };
 			expect(restored.dependencies["dsh-x"]).toBe("1.0.0");
 		} finally {
@@ -164,8 +165,9 @@ describe("applyUpgrade / applyUninstall", () => {
 			const runner: CommandRunner = async (argv) => { calls.push([...argv]); return { code: 0, output: "" }; };
 			const plan = planUninstall(profile({ "fx": "^1.0.0", "keep": "^1.0.0" }, dir), "fx");
 			expect(plan.wouldRemove).toBe(true);
+			expect(plan.profileName).toBe("t");
 			await applyUninstall(dir, plan, runner);
-			expect(calls).toEqual([["pnpm", "remove", "fx"]]);
+			expect(calls).toEqual([["dsh", "plugin", "--profile", "t", "remove", "fx"]]);
 			const pkg = JSON.parse(await readFile(path.join(dir, "package.json"), "utf8")) as { dsh: { profile: { bundles: string[] } } };
 			expect(pkg.dsh.profile.bundles).toEqual(["keep"]);
 		} finally {
@@ -180,20 +182,12 @@ describe("applyUpgrade / applyUninstall", () => {
 	});
 });
 
-describe("shellQuote", () => {
-	test("wraps plain paths in single quotes", () => {
-		expect(shellQuote("/home/huang/.dsh/profiles/web")).toBe("'/home/huang/.dsh/profiles/web'");
-	});
-	test("escapes embedded single quotes", () => {
-		expect(shellQuote("/tmp/it's here")).toBe("'/tmp/it'\\''s here'");
-	});
-	test("survives empty string", () => {
-		expect(shellQuote("")).toBe("''");
-	});
-	test("plan commands embed the quoted profile dir without double quotes", async () => {
+describe("plan command form", () => {
+	test("plan commands use the native dsh plugin form (no cd, no quoting)", async () => {
 		const dir = "/home/huang/.dsh/profiles/web";
 		const plan = await planUpgrade(profile({ "dsh-better-sidebar": "^0.14.0" }, dir), "dsh-better-sidebar", fakeRegistry({ npm: { latest: "0.16.1" } }), { version: "0.14.0" }, null);
-		expect(plan.command).toContain(`cd '${dir}' && pnpm add`);
+		expect(plan.command).toBe("dsh plugin --profile t add dsh-better-sidebar@0.16.1");
+		expect(plan.command).not.toContain('cd');
 		expect(plan.command).not.toContain('"');
 	});
 });

@@ -20,6 +20,8 @@ export interface UpgradePlan {
 	targetLabel: string;
 	targetCommit: string | null;
 	newSpecifier: string;
+	/** Profile name for the native `dsh plugin --profile <name>` command form. */
+	profileName: string;
 	command: string;
 	wouldChange: boolean;
 	/** Published-at (npm) / committer date (git) of the installed version; null when unknowable. */
@@ -27,10 +29,6 @@ export interface UpgradePlan {
 	/** Published-at (npm) / committer date (git) of the latest version; null when unknowable. */
 	latestVersionDate: string | null;
 	error?: string;
-}
-
-export function shellQuote(s: string): string {
-	return `'${s.replace(/'/g, `'\\''`)}'`;
 }
 
 export interface RegistryLike {
@@ -63,11 +61,11 @@ export async function planUpgrade(
 ): Promise<UpgradePlan> {
 	const currentSpecifier = profile.dependencies[name];
 	if (!currentSpecifier) {
-		return { name, source: "unknown", installedVersion: null, installedCommit: null, currentSpecifier: "(no dependency)", targetLabel: "-", targetCommit: null, newSpecifier: "", command: "", wouldChange: false, currentVersionDate: null, latestVersionDate: null, error: `${name} is not a dependency of this profile` };
+		return { name, source: "unknown", installedVersion: null, installedCommit: null, currentSpecifier: "(no dependency)", targetLabel: "-", targetCommit: null, newSpecifier: "", profileName: profile.name, command: "", wouldChange: false, currentVersionDate: null, latestVersionDate: null, error: `${name} is not a dependency of this profile` };
 	}
 	const source = sourceOf(currentSpecifier);
 	const profileDir = profile.dir;
-	const base = { name, installedVersion: installed?.version ?? null, installedCommit, currentSpecifier, currentVersionDate: null as string | null, latestVersionDate: null as string | null };
+	const base = { name, installedVersion: installed?.version ?? null, installedCommit, currentSpecifier, profileName: profile.name, currentVersionDate: null as string | null, latestVersionDate: null as string | null };
 	const settings = { ...base, targetLabel: "", targetCommit: null as string | null, newSpecifier: "", command: "", wouldChange: false };
 
 	if (source === "git") {
@@ -93,7 +91,7 @@ export async function planUpgrade(
 			targetLabel,
 			targetCommit: info.latestTagCommit ?? info.headSha,
 			newSpecifier: spec,
-			command: `cd ${shellQuote(profileDir)} && pnpm add ${name}@${spec}`,
+			command: `dsh plugin --profile ${profile.name} add ${name}@${spec}`,
 			wouldChange,
 			currentVersionDate,
 			latestVersionDate: info.latestDate,
@@ -122,7 +120,7 @@ export async function planUpgrade(
 		source: "npm",
 		targetLabel: info.latest,
 		newSpecifier: npmSpecifier(currentSpecifier, info.latest),
-		command: `cd ${shellQuote(profileDir)} && pnpm add ${name}@${info.latest}`,
+		command: `dsh plugin --profile ${profile.name} add ${name}@${info.latest}`,
 		wouldChange,
 		currentVersionDate: installedVersion ? (dates?.[installedVersion] ?? null) : null,
 		latestVersionDate: info.latest ? (dates?.[info.latest] ?? null) : null,
@@ -145,10 +143,10 @@ export async function applyUpgrade(profileDir: string, plan: UpgradePlan, runner
 	data.dependencies[plan.name] = plan.newSpecifier;
 	await fs.writeFile(pkgPath, `${JSON.stringify(data, null, 2)}\n`);
 
-	const { code, output } = await runner(["pnpm", "install"], { cwd: profileDir, timeoutMs: 600_000 });
+	const { code, output } = await runner(["dsh", "plugin", "--profile", plan.profileName, "add", `${plan.name}@${plan.newSpecifier}`], { cwd: profileDir, timeoutMs: 600_000 });
 	if (code !== 0) {
 		await fs.writeFile(pkgPath, original).catch(() => undefined);
-		throw new Error(`pnpm install exited ${code}: ${output.trim().split("\n").slice(-8).join("\n")}`);
+		throw new Error(`dsh plugin add exited ${code}: ${output.trim().split("\n").slice(-8).join("\n")}`);
 	}
 	return { backupPath, output };
 }
@@ -160,6 +158,8 @@ export interface UninstallPlan {
 	inBundles: boolean;
 	/** True when the package can actually be removed. */
 	wouldRemove: boolean;
+	/** Profile name for the native `dsh plugin --profile <name> remove` form. */
+	profileName: string;
 	error?: string;
 }
 
@@ -168,13 +168,13 @@ export function planUninstall(profile: ProfileSummary, name: string): UninstallP
 	const inDependencies = name in profile.dependencies;
 	const inBundles = Array.isArray(profile.bundles) && profile.bundles.includes(name);
 	if (!inDependencies && !inBundles) {
-		return { name, isCore: false, inDependencies, inBundles, wouldRemove: false, error: `${name} is not part of this profile` };
+		return { name, isCore: false, inDependencies, inBundles, wouldRemove: false, profileName: profile.name, error: `${name} is not part of this profile` };
 	}
 	const core = /^@deepseek-ai\//.test(name) || /^@deepseek-harness-tui\//.test(name);
 	if (core) {
-		return { name, isCore: true, inDependencies, inBundles, wouldRemove: false, error: `${name} is a core dsh package and cannot be uninstalled` };
+		return { name, isCore: true, inDependencies, inBundles, wouldRemove: false, profileName: profile.name, error: `${name} is a core dsh package and cannot be uninstalled` };
 	}
-	return { name, isCore: false, inDependencies, inBundles, wouldRemove: true };
+	return { name, isCore: false, inDependencies, inBundles, wouldRemove: true, profileName: profile.name };
 }
 
 /**
@@ -193,9 +193,9 @@ export async function applyUninstall(profileDir: string, plan: UninstallPlan, ru
 	const output: string[] = [];
 	try {
 		if (plan.inDependencies) {
-			const { code, output: out } = await runner(["pnpm", "remove", plan.name], { cwd: profileDir, timeoutMs: 600_000 });
+			const { code, output: out } = await runner(["dsh", "plugin", "--profile", plan.profileName, "remove", plan.name], { cwd: profileDir, timeoutMs: 600_000 });
 			output.push(out);
-			if (code !== 0) throw new Error(`pnpm remove exited ${code}: ${out.trim().split("\n").slice(-8).join("\n")}`);
+			if (code !== 0) throw new Error(`dsh plugin remove exited ${code}: ${out.trim().split("\n").slice(-8).join("\n")}`);
 		}
 		const data = JSON.parse(await fs.readFile(pkgPath, "utf8")) as { dsh?: { profile?: { bundles?: string[] } } };
 		const bundles = data.dsh?.profile?.bundles;

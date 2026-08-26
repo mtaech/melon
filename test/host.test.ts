@@ -176,7 +176,7 @@ describe("host plugin", () => {
 		}
 	});
 
-	test("upgrade apply patches package.json, backs up, runs pnpm via subprocess", async () => {
+	test("upgrade apply patches package.json, backs up, runs dsh plugin add via subprocess", async () => {
 		const root = await fixtureProfile();
 		const spawned: string[][] = [];
 		const sub = {
@@ -200,7 +200,7 @@ describe("host plugin", () => {
 			const ok = await okRes.promise;
 			expect(ok.status).toBe(200);
 			expect((ok.body as { applied: boolean }).applied).toBe(true);
-			expect(spawned).toEqual([["pnpm", "install"]]);
+			expect(spawned).toEqual([["dsh", "plugin", "--profile", "fx", "add", "fx-npm@^1.1.0"]]);
 			const patched = JSON.parse(await readFile(path.join(profileDir, "package.json"), "utf8")) as { dependencies: Record<string, string> };
 			expect(patched.dependencies["fx-npm"]).toBe("^1.1.0");
 			const backups = await readdir(profileDir);

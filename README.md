@@ -8,8 +8,8 @@ DSH 插件管理面板，**嵌入 dsh Web 设置**：Settings → Plugins 新增
 
 - **版本清单**：读当前 profile 的 `package.json`（dependencies + `dsh.profile.bundles`）、`node_modules/*/package.json`（已装版本）、`pnpm-lock.yaml`（github 安装解析到的 40 位 commit）。
 - **最新版本**：全部走 dsh 进程自带的 node 运行时（`fetch`，零子进程）——npm 包查询 registry 的 `/<pkg>/latest`（dist-tag `latest`，尊重 `npm_config_registry`）；github 安装（`github:user/repo`）查 GitHub REST API `/tags` + `/commits/HEAD`，取最高 semver tag（无 tag 用 HEAD）；支持 `GITHUB_TOKEN` 环境变量提额；远端 4xx/不可达 → 该条目降级为「未知」并显示原因，不影响其它条目。
-- **升级**：preview 先展示 当前→目标 / 新 specifier / 可复制命令；应用时备份 `package.json`（`.dshbak-*`）、改写 specifier（npm 保 range 风格 `^`/`~`；git 包 pin 到 `#<tag>` 或 `#<commit>`）、经 **`ctx.subprocess`** 跑 `pnpm install`（bounded collect 输出），失败自动回滚。
-- **卸载**：从 `dependencies`（`ctx.subprocess` 跑 `pnpm remove`）与 `dsh.profile.bundles` 中一并移除；**core 包（`@deepseek-ai/*`、`@deepseek-harness-tui/*`）拒绝卸载**；未知包报错；同样带备份与失败回滚。
+- **升级**：preview 先展示 当前→目标 / 新 specifier / 可复制命令；应用时备份 `package.json`（`.dshbak-*`）、改写 specifier（npm 保 range 风格 `^`/`~`；git 包 pin 到 `#<tag>` 或 `#<commit>`）、经 **`ctx.subprocess`** 跑 dsh 原生命令 `dsh plugin --profile <name> add <pkg>@<版本>`（bounded collect 输出），失败自动回滚。
+- **卸载**：从 `dependencies`（`ctx.subprocess` 跑 `dsh plugin --profile <name> remove <pkg>`）与 `dsh.profile.bundles` 中一并移除；**core 包（`@deepseek-ai/*`、`@deepseek-harness-tui/*`）拒绝卸载**；未知包报错；同样带备份与失败回滚。
 - **stale 与并发**：升级前对当前文件重新计算，counts 与 staged 不一致拒绝；升级/卸载串行执行。
 - **安全护栏**：只操作本 profile 的 package.json；core 卸载被硬拒绝；`pnpm install` 失败恢复原文件。
 
