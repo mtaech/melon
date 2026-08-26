@@ -1,0 +1,73 @@
+{
+	"name": "dsh-ast-edit-tool",
+	"version": "0.1.0",
+	"private": true,
+	"description": "DSH structural code-edit tool: preview and apply ast-grep rewrites ($NAME / $$$ARGS metavariables) over files, directories, and globs, ported from oh-my-pi's ast_edit.",
+	"type": "module",
+	"main": "lib/index.js",
+	"types": "lib/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./lib/index.d.ts",
+			"default": "./lib/index.js"
+		},
+		"./src/*": "./src/*",
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"lib",
+		"cordis.patch.yml"
+	],
+	"dsh": {
+		"bundle": {
+			"patch": "cordis.patch.yml"
+		}
+	},
+	"license": "MIT",
+	"author": "画野 (mtaech)",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/mtaech/dsh-ast-edit-tool.git"
+	},
+	"homepage": "https://github.com/mtaech/dsh-ast-edit-tool#readme",
+	"bugs": {
+		"url": "https://github.com/mtaech/dsh-ast-edit-tool/issues"
+	},
+	"keywords": [
+		"dsh",
+		"dsh-plugin",
+		"cordis",
+		"ast-grep",
+		"codemod",
+		"structural-edit"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"check": "tsc -p tsconfig.json --noEmit",
+		"test": "bun test",
+		"smoke": "npm run build && node scripts/smoke.mjs"
+	},
+	"dependencies": {
+		"@ast-grep/cli": "^0.45.2",
+		"fast-glob": "^3.3.3",
+		"ignore": "^7.0.3"
+	},
+	"peerDependencies": {
+		"@deepseek-ai/dsh-tools": "^0.1.1-rc.2",
+		"@deepseek-ai/schemastery": "^3.18.1"
+	},
+	"peerDependenciesMeta": {
+		"@deepseek-ai/dsh-tools": {
+			"optional": true
+		},
+		"@deepseek-ai/schemastery": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"@deepseek-ai/dsh-tools": "^0.1.1-rc.2",
+		"@deepseek-ai/schemastery": "^3.18.1",
+		"@types/node": "^24.0.0",
+		"typescript": "^5.8.0"
+	}
+}
