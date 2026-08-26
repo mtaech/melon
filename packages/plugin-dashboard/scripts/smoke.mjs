@@ -59,6 +59,13 @@ function fakeRegistry() {
 		async latestGit() {
 			return { kind: "git", latestTag: "v0.2.0", latestTagCommit: "a".repeat(40), headSha: "a".repeat(40), error: null };
 		},
+		async npmVersionDates(name) {
+			if (name === "fx-npm") return { "1.0.0": "2026-01-01T00:00:00.000Z", "1.1.0": "2026-02-01T00:00:00.000Z" };
+			return null;
+		},
+		async commitDate() {
+			return "2026-01-15T00:00:00.000Z";
+		},
 	};
 }
 
@@ -147,6 +154,8 @@ await rm(root, { recursive: true, force: true });
 }
 
 // ── 3. real web profile through the host plugin (network tolerant) ──
+// Asserts structural invariants only: the concrete plugin roster and each
+// entry's install source are the user's own profile state, not a contract.
 {
 	console.log("real web profile (network)…");
 	let realRoute;
@@ -156,11 +165,10 @@ await rm(root, { recursive: true, force: true });
 	await realRoute.handler(fakeReq("GET", "/plugins/dsh-plugin-dashboard/api/list?force=1"), res);
 	const { status, body } = await promise;
 	const list = body.plugins || [];
-	check("real profile list ok", status === 200 && list.length > 5, JSON.stringify(body).slice(0, 150));
-	const bt = list.find((p) => p.name === "dsh-browser-tool");
-	check("dsh-browser-tool present", !!bt, JSON.stringify(list.map((p) => p.name)));
-	check("browser-tool git source + commit", bt && bt.source === "git" && /^[0-9a-f]{40}$/.test(bt.installedCommit || ""), JSON.stringify(bt));
-	console.log("  statuses:", list.map((p) => `${p.name}=${p.status}`).join(", "));
+	check("real profile list ok", status === 200 && list.length > 0, JSON.stringify(body).slice(0, 150));
+	check("every entry carries name/source/status", list.every((p) => p.name && p.source && p.status), JSON.stringify(list.slice(0, 2)));
+	check("core packages excluded", list.every((p) => !p.isCore), JSON.stringify(list.filter((p) => p.isCore).map((p) => p.name)));
+	console.log("  statuses:", list.map((p) => `${p.name}=${p.status} (${p.source})`).join(", "));
 }
 
 disposer();

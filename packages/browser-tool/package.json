@@ -77,6 +77,10 @@
 		}
 	},
 	"devDependencies": {
+		"@deepseek-ai/cordis": "catalog:",
+		"@deepseek-ai/dsh-attachment": "catalog:",
+		"@deepseek-ai/dsh-llm": "catalog:",
+		"@deepseek-ai/dsh-session": "catalog:",
 		"@deepseek-ai/dsh-tools": "catalog:",
 		"@deepseek-ai/schemastery": "catalog:",
 		"@types/node": "catalog:",

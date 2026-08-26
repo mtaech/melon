@@ -58,6 +58,7 @@
 	},
 	"scripts": {
 		"build": "node build.mjs",
+		"smoke": "pnpm run build && node scripts/smoke.mjs",
 		"prepublishOnly": "pnpm run build"
 	},
 	"peerDependencies": {

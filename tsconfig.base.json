@@ -1,4 +1,5 @@
 {
+	"$comment": "outDir/rootDir 是路径相对项：在 extends 中会相对 base 文件解析，因此必须留给各包自己声明。",
 	"compilerOptions": {
 		"target": "ES2024",
 		"module": "NodeNext",
@@ -12,8 +13,6 @@
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
 		"declaration": true,
-		"sourceMap": false,
-		"outDir": "lib",
-		"rootDir": "src"
+		"sourceMap": false
 	}
 }
