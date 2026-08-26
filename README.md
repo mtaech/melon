@@ -2,8 +2,6 @@
 
 DSH 插件管理面板，**嵌入 dsh Web 设置**：Settings → Plugins 新增「插件管理」tab，列出当前 profile 安装的第三方插件、各自已装版本与最新版本（npm registry 或 GitHub tags/HEAD），支持一键升级与卸载。
 
-双面插件形态：node 面在 dsh 进程内注册 host webserver 路由提供数据与操作 API；`dsh.client` 声明的浏览器面在同源 web GUI 里渲染 tab。不依赖 typert remote 装配，也不改 dsh 主仓库。
-
 ## 能力
 
 - **版本清单**：读当前 profile 的 `package.json`（dependencies + `dsh.profile.bundles`）、`node_modules/*/package.json`（已装版本）、`pnpm-lock.yaml`（github 安装解析到的 40 位 commit）。
