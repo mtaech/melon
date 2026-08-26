@@ -16,6 +16,7 @@ export interface PluginEntryDto {
     } | null;
     status: "update-available" | "up-to-date" | "not-installed" | "ahead" | "unknown" | "n-a";
     upgradeable: boolean;
+    url?: string | null;
 }
 export interface UpgradePlanDto {
     name: string;
@@ -28,6 +29,8 @@ export interface UpgradePlanDto {
     newSpecifier: string;
     command: string;
     wouldChange: boolean;
+    currentVersionDate?: string | null;
+    latestVersionDate?: string | null;
     error?: string;
 }
 export interface UninstallPlanDto {

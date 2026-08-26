@@ -24,6 +24,7 @@ export interface PluginEntryDto {
 	latest: { label: string; targetCommit: string | null; error: string | null } | null;
 	status: "update-available" | "up-to-date" | "not-installed" | "ahead" | "unknown" | "n-a";
 	upgradeable: boolean;
+	url?: string | null;
 }
 
 export interface UpgradePlanDto {
@@ -37,6 +38,8 @@ export interface UpgradePlanDto {
 	newSpecifier: string;
 	command: string;
 	wouldChange: boolean;
+	currentVersionDate?: string | null;
+	latestVersionDate?: string | null;
 	error?: string;
 }
 
@@ -78,6 +81,7 @@ const S = {
 	btn: { border: "1px solid var(--dsw-alias-border-l2)", borderRadius: "var(--m3-shape-small)", padding: "6px 10px", cursor: "pointer", background: "var(--dsw-alias-button-floating-fill)", color: "var(--dsw-alias-label-primary)", fontSize: 13 },
 	btnPrimary: { background: "var(--dsw-alias-button-primary-fill)", color: "var(--dsw-alias-label-primary-foreground)", borderColor: "transparent" },
 	btnDanger: { background: "var(--dsw-alias-button-floating-fill)", color: "var(--dsw-alias-state-error-primary)", borderColor: "var(--dsw-alias-state-error-secondary)" },
+	link: { color: "var(--dsw-alias-brand-text)", fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4, marginLeft: "auto" as const },
 	btnDisabled: { opacity: 0.45, cursor: "not-allowed" as const },
 	modalWrap: { position: "fixed" as const, inset: 0, background: "var(--dsw-alias-bg-mask-2)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10 },
 	modal: { background: "var(--dsw-alias-bg-layer-3)", border: "1px solid var(--dsw-alias-border-l3)", borderRadius: "var(--m3-shape-large)", maxWidth: 620, width: "100%" as const, maxHeight: "80vh", display: "flex", flexDirection: "column" as const },
@@ -91,10 +95,15 @@ const S = {
 	banner: { background: "var(--dsw-alias-state-warn-tertiary)", border: "1px solid var(--dsw-alias-state-warn-primary)", color: "var(--dsw-alias-state-warn-label)", padding: "8px 12px", borderRadius: "var(--m3-shape-small)", marginBottom: 12 },
 	empty: { color: "var(--dsw-alias-label-tertiary)", padding: 24, textAlign: "center" as const },
 	header: { display: "flex", alignItems: "center", gap: 10, marginBottom: 12, color: "var(--dsw-alias-label-primary)" },
+	search: { flex: 1, minWidth: 180, background: "var(--dsw-alias-bg-layer-1)", border: "1px solid var(--dsw-alias-border-l2)", borderRadius: "var(--m3-shape-small)", padding: "6px 10px", color: "var(--dsw-alias-label-primary)", fontSize: 13 },
 };
 
 function short(s: string | null | undefined): string {
 	return s ? s.slice(0, 7) : "";
+}
+
+function dateLabel(d: string | null | undefined): string {
+	return d ? d.slice(0, 10) : "—";
 }
 
 const STATUS_PILL: Record<string, [string, React.CSSProperties]> = {
@@ -156,7 +165,11 @@ function Card({ entry, onUpgrade, onUninstall }: CardProps): React.ReactElement 
 			React.createElement("span", null, "installed ", React.createElement("b", { style: S.versB }, entry.installedVersion ?? "—")),
 			React.createElement("span", null, "latest ", React.createElement("b", { style: S.versB }, latest)),
 		),
-		React.createElement("div", { style: S.actions }, button, uninstallBtn),
+		React.createElement("div", { style: S.actions },
+		entry.url ? React.createElement("a", { href: entry.url, target: "_blank", rel: "noreferrer", style: S.link, title: entry.url }, "仓库 ↗") : null,
+		button,
+		uninstallBtn,
+	),
 	);
 }
 
@@ -178,6 +191,7 @@ function DashboardTab(props: TabProps): React.ReactElement {
 	const [modal, setModal] = useState<ModalState>(EMPTY_MODAL);
 	const [open, setOpen] = useState(false);
 	const [uninstallState, setUninstallState] = useState<{ entry: PluginEntryDto; plan: UninstallPlanDto | null; log: string[]; busy: boolean; done: boolean } | null>(null);
+	const [query, setQuery] = useState("");
 
 	const reload = (): void => {
 		setLoading(true);
@@ -224,6 +238,11 @@ function DashboardTab(props: TabProps): React.ReactElement {
 		});
 	};
 
+	const q = query.trim().toLocaleLowerCase();
+	const visible = q
+		? entries.filter((e) => e.name.toLocaleLowerCase().includes(q) || (e.description ?? "").toLocaleLowerCase().includes(q))
+		: entries;
+
 	const close = (): void => setOpen(false);
 
 	const openUninstall = (name: string): void => {
@@ -259,16 +278,17 @@ function DashboardTab(props: TabProps): React.ReactElement {
 		React.createElement(
 			"div",
 			{ style: S.header },
-			React.createElement("strong", null, `插件管理（${entries.length}）`),
+			React.createElement("strong", null, `插件管理（${visible.length}）`),
+			React.createElement("input", { style: S.search, placeholder: "搜索插件…", value: query, onChange: (e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value) }),
 			React.createElement("button", { style: S.btn, onClick: reload }, "刷新"),
 		),
 		loading
 			? React.createElement("div", { style: S.empty }, "查询 npm registry + git 远端…")
 			: error
 				? React.createElement("div", { style: S.empty }, `加载失败：${error}`)
-				: entries.length === 0
-					? React.createElement("div", { style: S.empty }, "无插件")
-					: React.createElement("div", null, entries.map((e) => React.createElement(Card, { key: e.name, entry: e, onUpgrade: openUpgrade, onUninstall: openUninstall }))),
+				: visible.length === 0
+					? React.createElement("div", { style: S.empty }, q ? "无匹配插件" : "无插件")
+					: React.createElement("div", null, visible.map((e) => React.createElement(Card, { key: e.name, entry: e, onUpgrade: openUpgrade, onUninstall: openUninstall }))),
 		open ? React.createElement(UpgradeModal, { modal, onClose: close, onApply: doApply }) : null,
 		uninstallState ? React.createElement(UninstallModal, { state: uninstallState, onClose: closeUninstall, onApply: doUninstall }) : null,
 	);
@@ -278,7 +298,15 @@ function UpgradeModal({ modal, onClose, onApply }: { modal: ModalState; onClose:
 	const plan = modal.plan;
 	const rows: Array<[string, React.ReactNode]> = [];
 	if (plan) {
-		rows.push(["来源", plan.source], ["当前", `${plan.installedVersion ?? "—"}${plan.installedCommit ? ` (${short(plan.installedCommit)})` : ""}`], ["目标", plan.targetLabel], ["旧 specifier", plan.currentSpecifier], ["新 specifier", plan.newSpecifier]);
+		rows.push(
+			["来源", plan.source],
+			["当前", `${plan.installedVersion ?? "—"}${plan.installedCommit ? ` (${short(plan.installedCommit)})` : ""}`],
+			["当前版本日期", dateLabel(plan.currentVersionDate)],
+			["目标", plan.targetLabel],
+			["最新版本日期", dateLabel(plan.latestVersionDate)],
+			["旧 specifier", plan.currentSpecifier],
+			["新 specifier", plan.newSpecifier],
+		);
 		if (plan.error) rows.push(["错误", plan.error]);
 		else rows.push(["命令", React.createElement("code", null, plan.command)]);
 	}
