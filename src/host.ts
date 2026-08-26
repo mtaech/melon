@@ -15,7 +15,7 @@ import type { Context } from "@deepseek-ai/cordis";
 import type {} from "@deepseek-ai/dsh-host-webserver";
 import type { SubprocessRuntime } from "@deepseek-ai/dsh-subprocess";
 import { Registry } from "./registry.js";
-import { readProfileDir, readInstalled, readLockCommit, isCorePackage, sourceOf, type ProfileSummary, type PluginSource } from "./profile.js";
+import { readProfileDir, readInstalled, readLockCommit, isCorePackage, sourceOf, parseGithubSpec, type ProfileSummary, type PluginSource } from "./profile.js";
 import { planUpgrade, applyUpgrade, planUninstall, applyUninstall, type UpgradePlan, type UninstallPlan, type CommandRunner } from "./upgrade.js";
 
 export const name = "dsh-plugin-dashboard";
@@ -33,6 +33,8 @@ export interface PluginEntry {
 	latest: { label: string; targetCommit: string | null; error: string | null } | null;
 	status: "update-available" | "up-to-date" | "not-installed" | "ahead" | "unknown" | "n-a";
 	upgradeable: boolean;
+	/** Source page: GitHub repo for git deps, npm page for registry deps. */
+	url: string | null;
 }
 
 export interface HostOptions {
@@ -124,6 +126,16 @@ export function subprocessRunner(sub: SubprocessRuntime): CommandRunner {
 	};
 }
 
+/** Resolve the human-visible source page for a dependency. */
+function packageUrl(name: string, specifier: string, source: PluginSource): string | null {
+	if (source === "git") {
+		const gh = parseGithubSpec(specifier);
+		return gh ? `https://github.com/${gh.user}/${gh.repo}` : null;
+	}
+	if (source === "npm") return `https://www.npmjs.com/package/${encodeURIComponent(name)}`;
+	return null;
+}
+
 async function buildInventory(profile: ProfileSummary, registry: Registry): Promise<PluginEntry[]> {
 	const lockText = await fs.readFile(path.join(profile.dir, "pnpm-lock.yaml"), "utf8").catch(() => "");
 	const names = new Set<string>([...Object.keys(profile.dependencies), ...profile.bundles]);
@@ -146,6 +158,7 @@ async function buildInventory(profile: ProfileSummary, registry: Registry): Prom
 			latest: null,
 			status: "unknown",
 			upgradeable: false,
+			url: specifier ? packageUrl(name, specifier, source) : null,
 		};
 		if (!specifier || source === "local" || source === "unknown") {
 			entry.latest = { label: "-", targetCommit: null, error: null };

@@ -21,6 +21,8 @@ export interface PluginEntry {
     } | null;
     status: "update-available" | "up-to-date" | "not-installed" | "ahead" | "unknown" | "n-a";
     upgradeable: boolean;
+    /** Source page: GitHub repo for git deps, npm page for registry deps. */
+    url: string | null;
 }
 export interface HostOptions {
     /** Injectable for tests; defaults to a fresh Registry over the node fetch. */

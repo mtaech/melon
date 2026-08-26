@@ -14,7 +14,13 @@ function fakeRegistry(): RegistryLike {
 			return { kind: "npm", latest: null, error: "not found" };
 		},
 		async latestGit(): Promise<GitLatest> {
-			return { kind: "git", latestTag: "v0.2.0", latestTagCommit: "aaaa1111bbbb2222cccc3333dddd4444eeee5555", headSha: "aaaa1111bbbb2222cccc3333dddd4444eeee5555", error: null };
+			return { kind: "git", latestTag: "v0.2.0", latestTagCommit: "aaaa1111bbbb2222cccc3333dddd4444eeee5555", headSha: "aaaa1111bbbb2222cccc3333dddd4444eeee5555", latestDate: null, error: null };
+		},
+		async npmVersionDates() {
+			return null;
+		},
+		async commitDate() {
+			return null;
 		},
 	} as RegistryLike;
 }
@@ -268,6 +274,23 @@ describe("host plugin — uninstall", () => {
 			expect(pkg.dsh.profile.bundles).toContain("fx-git");
 			const files = await readdir(path.join(root, "fx"));
 			expect(files.some((f) => f.includes(".dshbak-"))).toBe(true);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("entries carry source URLs (github repo / npm page)", async () => {
+		const root = await fixtureProfile();
+		try {
+			const { route } = mount(root, fakeRegistry());
+			const { promise, res } = fakeRes();
+			await route.handler(fakeReq("GET", "/plugins/dsh-plugin-dashboard/api/list"), res);
+			const { body } = await promise;
+			const plugins = (body as { plugins: Array<{ name: string; url: string | null }> }).plugins;
+			const npm = plugins.find((p) => p.name === "fx-npm")!;
+			const git = plugins.find((p) => p.name === "fx-git")!;
+			expect(npm.url).toBe("https://www.npmjs.com/package/fx-npm");
+			expect(git.url).toBe("https://github.com/example/fx-git");
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}
