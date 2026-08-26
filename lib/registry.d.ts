@@ -17,6 +17,8 @@ export interface GitLatest {
     latestTagCommit: string | null;
     /** HEAD commit sha. */
     headSha: string | null;
+    /** Committer date (ISO) of the latest tag commit, else of HEAD. */
+    latestDate: string | null;
     error: string | null;
 }
 export interface RegistryOptions {
@@ -41,6 +43,10 @@ export declare class Registry {
     latestNpm(name: string): Promise<NpmLatest>;
     latestGit(user: string, repo: string): Promise<GitLatest>;
     private fetchGit;
+    /** Committer date (ISO) of one commit — used for the installed version of a git dep. */
+    commitDate(user: string, repo: string, sha: string): Promise<string | null>;
+    /** Version→published-at map from the full manifest `time` object (npm). */
+    npmVersionDates(name: string): Promise<Record<string, string> | null>;
 }
 /** Human label for the best available git target. */
 export declare function describeGitTarget(info: GitLatest): string;

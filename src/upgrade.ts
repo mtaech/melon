@@ -22,6 +22,10 @@ export interface UpgradePlan {
 	newSpecifier: string;
 	command: string;
 	wouldChange: boolean;
+	/** Published-at (npm) / committer date (git) of the installed version; null when unknowable. */
+	currentVersionDate: string | null;
+	/** Published-at (npm) / committer date (git) of the latest version; null when unknowable. */
+	latestVersionDate: string | null;
 	error?: string;
 }
 
@@ -32,6 +36,10 @@ export function shellQuote(s: string): string {
 export interface RegistryLike {
 	latestNpm(name: string): Promise<NpmLatest>;
 	latestGit(user: string, repo: string): Promise<GitLatest>;
+	/** version → published-at map from the npm manifest `time` object. */
+	npmVersionDates(name: string): Promise<Record<string, string> | null>;
+	/** committer date of one commit. */
+	commitDate(user: string, repo: string, sha: string): Promise<string | null>;
 }
 
 /** One command invocation; `code !== 0` signals failure (empty output allowed). */
@@ -55,11 +63,12 @@ export async function planUpgrade(
 ): Promise<UpgradePlan> {
 	const currentSpecifier = profile.dependencies[name];
 	if (!currentSpecifier) {
-		return { name, source: "unknown", installedVersion: null, installedCommit: null, currentSpecifier: "(no dependency)", targetLabel: "-", targetCommit: null, newSpecifier: "", command: "", wouldChange: false, error: `${name} is not a dependency of this profile` };
+		return { name, source: "unknown", installedVersion: null, installedCommit: null, currentSpecifier: "(no dependency)", targetLabel: "-", targetCommit: null, newSpecifier: "", command: "", wouldChange: false, currentVersionDate: null, latestVersionDate: null, error: `${name} is not a dependency of this profile` };
 	}
 	const source = sourceOf(currentSpecifier);
 	const profileDir = profile.dir;
-	const settings = { name, installedVersion: installed?.version ?? null, installedCommit, currentSpecifier, targetLabel: "", targetCommit: null as string | null, newSpecifier: "", command: "", wouldChange: false };
+	const base = { name, installedVersion: installed?.version ?? null, installedCommit, currentSpecifier, currentVersionDate: null as string | null, latestVersionDate: null as string | null };
+	const settings = { ...base, targetLabel: "", targetCommit: null as string | null, newSpecifier: "", command: "", wouldChange: false };
 
 	if (source === "git") {
 		const gh = parseGithubSpec(currentSpecifier);
@@ -77,6 +86,7 @@ export async function planUpgrade(
 		const spec = `github:${gh.user}/${gh.repo}#${ref}`;
 		const targetLabel = info.latestTag ?? `HEAD ${info.headSha?.slice(0, 7)}`;
 		const wouldChange = installedCommit === null || (info.latestTagCommit ?? info.headSha) !== installedCommit;
+		const currentVersionDate = installedCommit ? await registry.commitDate(gh.user, gh.repo, installedCommit) : null;
 		return {
 			...settings,
 			source,
@@ -85,6 +95,8 @@ export async function planUpgrade(
 			newSpecifier: spec,
 			command: `cd ${shellQuote(profileDir)} && pnpm add ${name}@${spec}`,
 			wouldChange,
+			currentVersionDate,
+			latestVersionDate: info.latestDate,
 		};
 	}
 
@@ -104,6 +116,7 @@ export async function planUpgrade(
 		const b = parseSemver(info.latest);
 		wouldChange = !a || !b || compareSemver(b, a) > 0;
 	}
+	const dates = await registry.npmVersionDates(name);
 	return {
 		...settings,
 		source: "npm",
@@ -111,6 +124,8 @@ export async function planUpgrade(
 		newSpecifier: npmSpecifier(currentSpecifier, info.latest),
 		command: `cd ${shellQuote(profileDir)} && pnpm add ${name}@${info.latest}`,
 		wouldChange,
+		currentVersionDate: installedVersion ? (dates?.[installedVersion] ?? null) : null,
+		latestVersionDate: info.latest ? (dates?.[info.latest] ?? null) : null,
 	};
 }
 

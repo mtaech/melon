@@ -101,3 +101,42 @@ describe("Registry — cache", () => {
 		expect(calls).toBe(2);
 	});
 });
+describe("Registry — version dates", () => {
+	test("npmVersionDates reads the manifest time object", async () => {
+		const reg = new Registry({
+			fetchFn: fakeFetch({
+				"https://registry.npmjs.org/dsh-x": { time: { "0.1.0": "2026-01-01T00:00:00.000Z", "0.1.1": "2026-02-01T00:00:00.000Z" } },
+			}),
+		});
+		const dates = await reg.npmVersionDates("dsh-x");
+		expect(dates?.["0.1.1"]).toBe("2026-02-01T00:00:00.000Z");
+		expect(dates?.["0.1.0"]).toBe("2026-01-01T00:00:00.000Z");
+	});
+
+	test("npmVersionDates returns null on non-ok responses", async () => {
+		const reg = new Registry({ fetchFn: fakeFetch({}) });
+		expect(await reg.npmVersionDates("ghost")).toBeNull();
+	});
+
+	test("commitDate reads the committer date", async () => {
+		const sha = "a".repeat(40);
+		const reg = new Registry({
+			fetchFn: fakeFetch({
+				[`https://api.github.com/repos/mtaech/dsh-x/commits/${sha}`]: { sha, commit: { committer: { date: "2026-05-01T00:00:00.000Z" } } },
+			}),
+		});
+		expect(await reg.commitDate("mtaech", "dsh-x", sha)).toBe("2026-05-01T00:00:00.000Z");
+	});
+
+	test("git latest carries the latest-tag commit date", async () => {
+		const reg = new Registry({
+			fetchFn: fakeFetch({
+				"https://api.github.com/repos/mtaech/dsh-x/tags": [{ name: "v0.2.0", commit: { sha: "b".repeat(40) } }],
+				"https://api.github.com/repos/mtaech/dsh-x/commits/HEAD": { sha: "b".repeat(40), commit: { committer: { date: "2026-04-10T00:00:00.000Z" } } },
+				[`https://api.github.com/repos/mtaech/dsh-x/commits/${"b".repeat(40)}`]: { sha: "b".repeat(40), commit: { committer: { date: "2026-04-10T00:00:00.000Z" } } },
+			}),
+		});
+		const info = await reg.latestGit("mtaech", "dsh-x");
+		expect(info.latestDate).toBe("2026-04-10T00:00:00.000Z");
+	});
+});

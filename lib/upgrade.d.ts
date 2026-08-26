@@ -11,12 +11,20 @@ export interface UpgradePlan {
     newSpecifier: string;
     command: string;
     wouldChange: boolean;
+    /** Published-at (npm) / committer date (git) of the installed version; null when unknowable. */
+    currentVersionDate: string | null;
+    /** Published-at (npm) / committer date (git) of the latest version; null when unknowable. */
+    latestVersionDate: string | null;
     error?: string;
 }
 export declare function shellQuote(s: string): string;
 export interface RegistryLike {
     latestNpm(name: string): Promise<NpmLatest>;
     latestGit(user: string, repo: string): Promise<GitLatest>;
+    /** version → published-at map from the npm manifest `time` object. */
+    npmVersionDates(name: string): Promise<Record<string, string> | null>;
+    /** committer date of one commit. */
+    commitDate(user: string, repo: string, sha: string): Promise<string | null>;
 }
 /** One command invocation; `code !== 0` signals failure (empty output allowed). */
 export interface CommandRunner {

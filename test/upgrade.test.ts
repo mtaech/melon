@@ -6,13 +6,19 @@ import { planUpgrade, applyUpgrade, planUninstall, applyUninstall, shellQuote, t
 import type { ProfileSummary } from "../src/profile.js";
 import type { GitLatest, NpmLatest } from "../src/registry.js";
 
-function fakeRegistry(opts: { npm?: Partial<NpmLatest>; git?: Partial<GitLatest> }): RegistryLike {
+function fakeRegistry(opts: { npm?: Partial<NpmLatest>; git?: Partial<GitLatest>; dates?: Record<string, string> }): RegistryLike {
 	return {
 		async latestNpm() {
 			return { kind: "npm", latest: null, error: null, ...opts.npm };
 		},
 		async latestGit() {
-			return { kind: "git", latestTag: null, latestTagCommit: null, headSha: null, error: null, ...opts.git };
+			return { kind: "git", latestTag: null, latestTagCommit: null, headSha: null, latestDate: null, error: null, ...opts.git };
+		},
+		async npmVersionDates() {
+			return opts.dates ?? null;
+		},
+		async commitDate() {
+			return "2026-01-02T00:00:00.000Z";
 		},
 	};
 }
@@ -28,6 +34,20 @@ describe("planUpgrade — npm", () => {
 		expect(plan.newSpecifier).toBe("^0.15.1");
 		expect(plan.targetLabel).toBe("0.15.1");
 		expect(plan.source).toBe("npm");
+	});
+
+	test("npm plan carries installed + latest publish dates from the manifest", async () => {
+		const plan = await planUpgrade(profile({ "dsh-x": "^0.14.0" }), "dsh-x", fakeRegistry({ npm: { latest: "0.15.1" }, dates: { "0.14.0": "2026-01-01T00:00:00.000Z", "0.15.1": "2026-03-15T00:00:00.000Z" } }), { version: "0.14.0" }, null);
+		expect(plan.currentVersionDate).toBe("2026-01-01T00:00:00.000Z");
+		expect(plan.latestVersionDate).toBe("2026-03-15T00:00:00.000Z");
+	});
+
+	test("git plan carries installed commit + latest tag dates", async () => {
+		const plan = await planUpgrade(profile({ "dsh-browser-tool": "github:mtaech/dsh-browser-tool" }), "dsh-browser-tool", fakeRegistry({
+			git: { latestTag: "v0.2.0", latestTagCommit: "a".repeat(40), headSha: "a".repeat(40), latestDate: "2026-05-01T00:00:00.000Z" },
+		}), { version: "0.1.0" }, "1".repeat(40));
+		expect(plan.currentVersionDate).toBe("2026-01-02T00:00:00.000Z"); // from commitDate fake
+		expect(plan.latestVersionDate).toBe("2026-05-01T00:00:00.000Z");
 	});
 
 	test("up-to-date when installed equals latest", async () => {

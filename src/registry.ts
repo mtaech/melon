@@ -19,6 +19,8 @@ export interface GitLatest {
 	latestTagCommit: string | null;
 	/** HEAD commit sha. */
 	headSha: string | null;
+	/** Committer date (ISO) of the latest tag commit, else of HEAD. */
+	latestDate: string | null;
 	error: string | null;
 }
 
@@ -110,7 +112,9 @@ export class Registry {
 				this.fetchFn(`https://api.github.com/repos/${user}/${repo}/commits/HEAD`, { headers, signal: AbortSignal.timeout(20_000) }),
 			]);
 			const error = !tagsRes.ok ? `github ${tagsRes.status} ${tagsRes.statusText}${tagsRes.status === 404 ? " (private repo? set GITHUB_TOKEN or gh auth)" : " (rate limit?)"}` : null;
-			const headSha = headRes.ok ? (((await headRes.json()) as { sha?: unknown }).sha as string | null | undefined) ?? null : null;
+			const headBody = headRes.ok ? ((await headRes.json()) as { sha?: unknown; commit?: { committer?: { date?: unknown } } }) : null;
+			const headSha = headBody && typeof headBody.sha === "string" ? headBody.sha : null;
+			const headDate = headBody && typeof headBody.commit?.committer?.date === "string" ? headBody.commit.committer.date : null;
 
 			let latestTag: string | null = null;
 			let latestTagCommit: string | null = null;
@@ -129,9 +133,48 @@ export class Registry {
 				}
 			}
 
-			return { kind: "git", latestTag, latestTagCommit, headSha, error };
+			let latestDate = headDate;
+			if (latestTagCommit) {
+				try {
+					const dateRes = await this.fetchFn(`https://api.github.com/repos/${user}/${repo}/commits/${latestTagCommit}`, { headers, signal: AbortSignal.timeout(20_000) });
+					if (dateRes.ok) {
+						const dateBody = (await dateRes.json()) as { commit?: { committer?: { date?: unknown } } };
+						if (typeof dateBody.commit?.committer?.date === "string") latestDate = dateBody.commit.committer.date;
+					}
+				} catch {
+					// date lookup is best-effort; keep the head fallback
+				}
+			}
+			return { kind: "git", latestTag, latestTagCommit, headSha, latestDate, error };
 		} catch (error) {
-			return { kind: "git", latestTag: null, latestTagCommit: null, headSha: null, error: error instanceof Error ? error.message : String(error) };
+			return { kind: "git", latestTag: null, latestTagCommit: null, headSha: null, latestDate: null, error: error instanceof Error ? error.message : String(error) };
+		}
+	}
+
+	/** Committer date (ISO) of one commit — used for the installed version of a git dep. */
+	async commitDate(user: string, repo: string, sha: string): Promise<string | null> {
+		try {
+			const headers: Record<string, string> = { accept: "application/vnd.github+json", "user-agent": "dsh-plugin-dashboard" };
+			if (this.githubToken) headers.authorization = `Bearer ${this.githubToken}`;
+			const res = await this.fetchFn(`https://api.github.com/repos/${user}/${repo}/commits/${sha}`, { headers, signal: AbortSignal.timeout(20_000) });
+			if (!res.ok) return null;
+			const body = (await res.json()) as { commit?: { committer?: { date?: unknown } } };
+			return typeof body.commit?.committer?.date === "string" ? body.commit.committer.date : null;
+		} catch {
+			return null;
+		}
+	}
+
+	/** Version→published-at map from the full manifest `time` object (npm). */
+	async npmVersionDates(name: string): Promise<Record<string, string> | null> {
+		try {
+			const url = `${this.registryUrl}/${name.replace("/", "%2F")}`;
+			const res = await this.fetchFn(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(20_000) });
+			if (!res.ok) return null;
+			const body = (await res.json()) as { time?: Record<string, string> };
+			return body.time ?? null;
+		} catch {
+			return null;
 		}
 	}
 }

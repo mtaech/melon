@@ -96,6 +96,8 @@ const S = {
 	empty: { color: "var(--dsw-alias-label-tertiary)", padding: 24, textAlign: "center" as const },
 	header: { display: "flex", alignItems: "center", gap: 10, marginBottom: 12, color: "var(--dsw-alias-label-primary)" },
 	search: { flex: 1, minWidth: 180, background: "var(--dsw-alias-bg-layer-1)", border: "1px solid var(--dsw-alias-border-l2)", borderRadius: "var(--m3-shape-small)", padding: "6px 10px", color: "var(--dsw-alias-label-primary)", fontSize: 13 },
+	searchBox: { display: "flex", alignItems: "center", flex: 1, minWidth: 180, gap: 4 },
+	clear: { border: "none", background: "transparent", color: "var(--dsw-alias-label-tertiary)", cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: "var(--m3-shape-small)", display: "inline-flex", lineHeight: 1 },
 };
 
 function short(s: string | null | undefined): string {
@@ -279,7 +281,10 @@ function DashboardTab(props: TabProps): React.ReactElement {
 			"div",
 			{ style: S.header },
 			React.createElement("strong", null, `插件管理（${visible.length}）`),
-			React.createElement("input", { style: S.search, placeholder: "搜索插件…", value: query, onChange: (e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value) }),
+			React.createElement("div", { style: S.searchBox },
+				React.createElement("input", { style: { ...S.search, border: "none", padding: 0, flex: 1, minWidth: 0, background: "transparent", outline: "none" }, placeholder: "搜索插件…", value: query, onChange: (e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value) }),
+				query ? React.createElement("button", { style: S.clear, onClick: () => setQuery(""), title: "清除搜索", type: "button" }, "×") : null,
+			),
 			React.createElement("button", { style: S.btn, onClick: reload }, "刷新"),
 		),
 		loading
