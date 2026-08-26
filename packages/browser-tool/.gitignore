@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# lib/ is intentionally committed: this plugin is installed straight from git
+# (pnpm blocks a git dependency's prepare script unless it is allowlisted by
+# an exact commit hash), so the built output has to be in the tree.
