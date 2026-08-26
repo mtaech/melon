@@ -1,6 +1,6 @@
 # melon
 
-为 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai) 开发的插件与皮肤单仓库。
+为 [DSH（DeepSeek Harness）](https://github.com/deepseek-ai/deepseek-harness) 开发的插件与皮肤单仓库。
 
 ## 包
 
