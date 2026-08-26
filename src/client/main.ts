@@ -97,10 +97,6 @@ function short(s: string | null | undefined): string {
 	return s ? s.slice(0, 7) : "";
 }
 
-function esc(s: string | null | undefined): string {
-	return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-}
-
 const STATUS_PILL: Record<string, [string, React.CSSProperties]> = {
 	"update-available": ["可升级", S.pillAvail],
 	"not-installed": ["未安装", S.pillAvail],
@@ -153,12 +149,12 @@ function Card({ entry, onUpgrade, onUninstall }: CardProps): React.ReactElement 
 			...badges,
 			React.createElement(Pill, { status: entry.status }),
 		),
-		React.createElement("div", { style: S.desc }, esc(entry.description ?? "")),
+		React.createElement("div", { style: S.desc }, entry.description ?? ""),
 		React.createElement(
 			"div",
 			{ style: S.vers },
-			React.createElement("span", null, "installed ", React.createElement("b", { style: S.versB }, esc(entry.installedVersion ?? "—"))),
-			React.createElement("span", null, "latest ", React.createElement("b", { style: S.versB }, esc(latest))),
+			React.createElement("span", null, "installed ", React.createElement("b", { style: S.versB }, entry.installedVersion ?? "—")),
+			React.createElement("span", null, "latest ", React.createElement("b", { style: S.versB }, latest)),
 		),
 		React.createElement("div", { style: S.actions }, button, uninstallBtn),
 	);
@@ -269,7 +265,7 @@ function DashboardTab(props: TabProps): React.ReactElement {
 		loading
 			? React.createElement("div", { style: S.empty }, "查询 npm registry + git 远端…")
 			: error
-				? React.createElement("div", { style: S.empty }, `加载失败：${esc(error)}`)
+				? React.createElement("div", { style: S.empty }, `加载失败：${error}`)
 				: entries.length === 0
 					? React.createElement("div", { style: S.empty }, "无插件")
 					: React.createElement("div", null, entries.map((e) => React.createElement(Card, { key: e.name, entry: e, onUpgrade: openUpgrade, onUninstall: openUninstall }))),
@@ -284,7 +280,7 @@ function UpgradeModal({ modal, onClose, onApply }: { modal: ModalState; onClose:
 	if (plan) {
 		rows.push(["来源", plan.source], ["当前", `${plan.installedVersion ?? "—"}${plan.installedCommit ? ` (${short(plan.installedCommit)})` : ""}`], ["目标", plan.targetLabel], ["旧 specifier", plan.currentSpecifier], ["新 specifier", plan.newSpecifier]);
 		if (plan.error) rows.push(["错误", plan.error]);
-		else rows.push(["命令", React.createElement("code", null, esc(plan.command))]);
+		else rows.push(["命令", React.createElement("code", null, plan.command)]);
 	}
 	const canApply = plan != null && !plan.error && !modal.busy && !modal.done;
 	return React.createElement("div", { style: S.modalWrap, onClick: onClose },
