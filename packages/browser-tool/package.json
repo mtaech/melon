@@ -1,6 +1,6 @@
 {
 	"name": "dsh-browser-tool",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "DSH browser tool: drive Chromium tabs (headless / CDP-attached / spawned apps / user's real Chrome via the OMP-style Browser Relay) with an open-close-run + tab scripting API, ported from oh-my-pi.",
 	"type": "module",
 	"main": "lib/index.js",
