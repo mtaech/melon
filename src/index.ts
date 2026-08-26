@@ -61,7 +61,8 @@ const parameters = {
 	kill: { type: "boolean" as const, description: "Close + kill the owned browser process." },
 };
 
-const outputSchema = {
+/** Exported so the contract test can validate real result objects against the declared schema. */
+export const outputSchema = {
 	type: "object" as const,
 	additionalProperties: false as const,
 	properties: {
@@ -168,6 +169,10 @@ export function apply(ctx: Context, options: BrowserToolOptions = {}): void {
 				"  omp browser tool), assert/wait/sleep/display/print/console. tab.observe() returns interactive elements with ids for",
 				"  click/type/fill, tab.ariaSnapshot() returns an aria snapshot with refs (ref(e1) etc.), tab.screenshot() saves and",
 				"  returns a path, tab.extract() returns readable markdown. Local network and file access follow the hosting environment.",
+				"  A run cell reports returnValue only when its last top-level statement is an expression or an explicit `return <expr>`;",
+				"  a cell ending in any other statement omits returnValue entirely, which is normal and not an error. Values that are",
+				"  not JSON (functions, class instances, cycles) are coerced to a string or dropped, so return plain JSON and use",
+				"  display()/print() for anything you want to read regardless.",
 				"- close: close a tab (optionally kill the owned browser).",
 			].join(" "),
 			parameters,
@@ -249,11 +254,12 @@ async function actionOpen(
 			signal: exec.signal,
 			ownerSessionId,
 		});
+		const url = tab.info?.url ?? args.url;
 		return {
 			ok: true,
 			name: args.name,
 			created,
-			url: tab.info?.url ?? args.url,
+			...(url === undefined ? {} : { url }),
 			message: created
 				? `Opened tab ${JSON.stringify(args.name)} (${tab.info?.url ?? "about:blank"})`
 				: `Reused tab ${JSON.stringify(args.name)}`,
@@ -291,7 +297,7 @@ async function actionRun(
 		} else {
 			const image = entry as ImageContent;
 			const ref = await saveImage(attachments, image);
-			output.push({ kind: "image", image: ref, dest: image.dest });
+			output.push({ kind: "image", image: ref, ...(image.dest === undefined ? {} : { dest: image.dest }) });
 		}
 	}
 	if (result.screenshots?.length) {
@@ -300,11 +306,14 @@ async function actionRun(
 			text: `Screenshots: ${result.screenshots.map(s => `${s.dest} (${s.width}x${s.height})`).join(", ")}`,
 		});
 	}
+	const returnValue = toJsonValue(result.returnValue);
 	return {
 		ok: true,
 		name: args.name,
 		output,
-		returnValue: toJsonValue(result.returnValue),
+		// The schema declares returnValue optional; an absent value must be an absent
+		// KEY, because an own key holding `undefined` breaks the lossless-JSON boundary.
+		...(returnValue === undefined ? {} : { returnValue }),
 	};
 }
 

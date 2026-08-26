@@ -38,6 +38,82 @@ export declare const Config: z<Schemastery.ObjectS<{
     noWebP: z<boolean, boolean>;
     installChrome: z<boolean, boolean>;
 }>>;
+/** Exported so the contract test can validate real result objects against the declared schema. */
+export declare const outputSchema: {
+    type: "object";
+    additionalProperties: false;
+    properties: {
+        ok: {
+            type: "boolean";
+            required: true;
+        };
+        name: {
+            type: "string";
+            required: true;
+        };
+        created: {
+            type: "boolean";
+        };
+        url: {
+            type: "string";
+        };
+        message: {
+            type: "string";
+        };
+        output: {
+            type: "array";
+            items: {
+                type: "object";
+                additionalProperties: false;
+                properties: {
+                    kind: {
+                        type: "string";
+                        enum: ("text" | "image")[];
+                        required: true;
+                    };
+                    text: {
+                        type: "string";
+                    };
+                    dest: {
+                        type: "string";
+                    };
+                    image: {
+                        type: "object";
+                        additionalProperties: false;
+                        properties: {
+                            attachmentId: {
+                                type: "string";
+                                required: true;
+                            };
+                            mediaType: {
+                                type: "string";
+                                required: true;
+                            };
+                            bytes: {
+                                type: "integer";
+                                required: true;
+                            };
+                            width: {
+                                type: "integer";
+                                required: true;
+                            };
+                            height: {
+                                type: "integer";
+                                required: true;
+                            };
+                            name: {
+                                type: "string";
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        returnValue: {
+            type: "json";
+        };
+    };
+};
 /** Runtime argument shape (validated by the schema above). */
 export interface BrowserToolArgs {
     action: "open" | "run" | "close";
