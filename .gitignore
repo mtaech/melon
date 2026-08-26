@@ -14,3 +14,6 @@ Desktop.ini
 *.swp
 
 .migrate-src/
+
+# whalenest 是独立仓库，只是恰好放在同级目录
+dsh-desktop/
