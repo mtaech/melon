@@ -273,6 +273,29 @@ describe("host plugin — uninstall", () => {
 		}
 	});
 
+	test("core packages are excluded from the inventory", async () => {
+		const root = await mkdtemp(path.join(os.tmpdir(), "dash-core-"));
+		const dir = path.join(root, "fx");
+		await mkdir(dir, { recursive: true });
+		await writeFile(path.join(dir, "package.json"), JSON.stringify({
+			name: "fx",
+			dependencies: { "fx-npm": "^1.0.0", "@deepseek-ai/dsh-base": "^1.0.0" },
+			dsh: { profile: { bundles: ["fx-npm", "@deepseek-ai/dsh-base"] } },
+		}, null, 2) + "\n");
+		try {
+			const { route } = mount(root, fakeRegistry());
+			const { promise, res } = fakeRes();
+			await route.handler(fakeReq("GET", "/plugins/dsh-plugin-dashboard/api/list"), res);
+			const { status, body } = await promise;
+			expect(status).toBe(200);
+			const names = (body as { plugins: Array<{ name: string; isCore: boolean }> }).plugins.map((p) => p.name);
+			expect(names).toEqual(["fx-npm"]);
+			expect(names).not.toContain("@deepseek-ai/dsh-base");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
 	test("core packages are refused", async () => {
 		// profile containing a real core package in deps + bundles
 		const root = await mkdtemp(path.join(os.tmpdir(), "dash-core-"));

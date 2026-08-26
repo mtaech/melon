@@ -129,7 +129,7 @@ async function buildInventory(profile: ProfileSummary, registry: Registry): Prom
 	const names = new Set<string>([...Object.keys(profile.dependencies), ...profile.bundles]);
 	const sorted = [...names].sort();
 
-	return mapLimited(sorted, 8, async (name) => {
+	const entries = await mapLimited(sorted, 8, async (name) => {
 		const specifier = profile.dependencies[name] ?? "";
 		const installed = await readInstalled(profile.dir, name);
 		const installedCommit = specifier ? readLockCommit(lockText, name) : null;
@@ -169,6 +169,9 @@ async function buildInventory(profile: ProfileSummary, registry: Registry): Prom
 		entry.upgradeable = entry.status === "update-available" || entry.status === "not-installed";
 		return entry;
 	});
+	// Host-owned core packages (dsh itself) are not user-manageable: drop them
+	// from the inventory. The uninstall route still refuses them defensively.
+	return entries.filter((entry) => !entry.isCore);
 }
 
 function extractGhToken(output: string): string | undefined {

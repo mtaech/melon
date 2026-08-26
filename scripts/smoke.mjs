@@ -106,7 +106,7 @@ check("plugin returns disposer", typeof disposer === "function");
 	const list = body.plugins || [];
 	const npm = list.find((p) => p.name === "fx-npm");
 	const git = list.find((p) => p.name === "fx-git");
-	check("list 200 with three entries", status === 200 && list.length === 3, JSON.stringify(body).slice(0, 150));
+	check("list 200 with third-party entries only", status === 200 && list.length === 2 && !list.some((p) => p.isCore), JSON.stringify(body).slice(0, 150));
 	check("npm entry classified", npm && npm.source === "npm" && npm.installedVersion === "1.0.0" && npm.latest.label === "1.1.0" && npm.upgradeable, JSON.stringify(npm));
 	check("git entry classified", git && git.source === "git" && git.installedCommit === "1".repeat(40) && git.latest.label === "v0.2.0", JSON.stringify(git));
 }
