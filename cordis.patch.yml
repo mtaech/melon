@@ -1,0 +1,5 @@
+# dsh-ast-edit-tool bundle layer: register the `ast_edit` tool on the host
+# tools registry so every session composed under this profile can call it.
+- insert:
+    - id: dsh-ast-edit-tool
+      name: dsh-ast-edit-tool
