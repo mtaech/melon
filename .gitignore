@@ -1,0 +1,16 @@
+node_modules/
+lib/
+dist/
+*.tsbuildinfo
+
+*.log
+npm-debug.log*
+
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+
+.migrate-src/
