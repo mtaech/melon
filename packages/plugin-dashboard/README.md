@@ -17,10 +17,10 @@ DSH 插件管理面板，**嵌入 dsh Web 设置**：Settings → Plugins 新增
 
 ```bash
 cd ~/.dsh/profiles/<你的 profile>          # 例如 web
-pnpm add github:mtaech/dsh-plugin-dashboard
+dsh plugin --profile <你的 profile> add dsh-plugin-dashboard
 ```
 
-`lib/` 已随仓库提交，装完即可用，无需本地构建。然后在 profile 的 `package.json` 把它加进 `dsh.profile.bundles`：
+从 npm 安装，`lib/` 已随包发布，装完即可用，无需本地构建。`dsh plugin add` 会自动把包名加进 profile 的 `dsh.profile.bundles`；手动编辑时形如：
 
 ```json
 {

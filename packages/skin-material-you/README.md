@@ -128,7 +128,7 @@ Regular/Medium/Bold：
 ## 5. 文件结构
 
 ```
-dsh-material/                 # 仓库根 = 插件包根（DSH 标准形态）
+packages/skin-material-you/   # melon 单仓库中的一个包
 ├── package.json        # dsh.bundle.patch + dsh.client 声明（标准插件形态）
 ├── cordis.patch.yml    # 自带 patch：insert 皮肤行（bundle 层）
 ├── build.mjs           # 构建脚本：src/tokens.mjs + fonts.css + palette.css → lib/client.js
@@ -144,11 +144,13 @@ dsh-material/                 # 仓库根 = 插件包根（DSH 标准形态）
 │   ├── palette.css     # 原始 HCT 色板（参考/文档）
 │   ├── client.js       # 源版插件体（apply/overrideTokens/register/注入 CSS）
 │   ├── client.d.ts
-│   └── index.js / index.d.ts   # 源版 host 入口（重新构建时用）
-└── lib/                # 构建产物（DSH 实际加载）
-    ├── index.js        # host 侧 no-op 插件入口（exports: name/apply）
-    ├── index.d.ts
-    └── client.js       # 浏览器侧 bundle（__ModuleLoader__.load 格式，内联 tokens+CSS）
+│   └── index.js / index.d.ts   # host 入口（no-op 插件，构建时复制进 lib/）
+├── scripts/
+│   └── smoke.mjs       # 按 web shell 方式加载 lib/client.js，驱动 apply/dispose
+└── lib/       # 构建产物（DSH 实际加载）——不入版本控制，由 build.mjs 产出
+    ├── index.js  # host 侧 no-op 插件入口（exports: name/apply）
+    ├── index.d.ts / client.d.ts
+    └── client.js     # 浏览器侧 bundle（__ModuleLoader__.load 格式，内联 tokens+CSS）
 ```
 
 ## 6. 插件形态（参考 dsh-ads）
@@ -182,10 +184,10 @@ DSH 的 `dsh plugin` 是 pnpm 转发器，支持本地路径、GitHub 等 pnpm �
 
 ```bash
 # 方式一：从 GitHub 安装（仓库根即插件包）
-dsh plugin --profile web add github:mtaech/dsh-material-you
+dsh plugin --profile web add dsh-skin-material-you
 
 # 方式二：从本仓库目录安装（file: 依赖；发布到 npm 后也可直接加包名）
-dsh plugin --profile web add "file:E:/Dev/Code/dsh-material"
+dsh plugin --profile web add "file:/path/to/melon/packages/skin-material-you"
 ```
 
 安装后：
@@ -196,7 +198,7 @@ dsh plugin --profile web add "file:E:/Dev/Code/dsh-material"
 
 > 💡 GitHub 安装会走包内 `prepare` 构建流程，pnpm 默认阻止构建脚本——若提示
 > `Ignored build scripts`，在 `profiles/web/pnpm-workspace.yaml` 的 `allowBuilds`
-> 里加入包名后重新执行即可（本包无需构建脚本也能直接运行，`lib/` 已随仓库提交）。
+> 里加入包名后重新执行即可（`lib/` 已随 npm 包发布，无需本地构建）。
 
 卸载：`dsh plugin --profile web remove dsh-skin-material-you`
 

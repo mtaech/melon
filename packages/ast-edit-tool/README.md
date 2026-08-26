@@ -37,10 +37,10 @@ ast_edit action:"reject" stagedId:"a1b2c3d4e5f6"
 
 ```bash
 cd ~/.dsh/profiles/<你的 profile>          # 例如 web
-pnpm add github:mtaech/dsh-ast-edit-tool
+dsh plugin --profile <你的 profile> add dsh-ast-edit-tool
 ```
 
-`lib/` 已随仓库提交，装完即可用，无需本地构建。
+从 npm 安装，`lib/` 已随包发布，装完即可用，无需本地构建。
 
 然后在该 profile 的 `package.json` 里把它加进 `dsh.profile.bundles`（顺序放最后即可）：
 
