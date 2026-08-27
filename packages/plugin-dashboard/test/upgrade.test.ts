@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, writeFile, readFile, rm, mkdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { planUpgrade, applyUpgrade, planUninstall, applyUninstall, type RegistryLike, type CommandRunner } from "../src/upgrade.js";
+import { planUpgrade, applyUpgrade, planUninstall, applyUninstall, dshCommandPrefix, type RegistryLike, type CommandRunner } from "../src/upgrade.js";
 import type { ProfileSummary } from "../src/profile.js";
 import type { GitLatest, NpmLatest } from "../src/registry.js";
 
@@ -132,7 +132,7 @@ describe("applyUpgrade / applyUninstall", () => {
 			const plan = await planUpgrade(profile({ "dsh-x": "^0.14.0" }, dir), "dsh-x", fakeRegistry({ npm: { latest: "0.15.1" } }), { version: "0.14.0" }, null);
 			const result = await applyUpgrade(dir, plan, runner);
 
-			expect(calls).toEqual([["dsh", "plugin", "--profile", "t", "add", "dsh-x@^0.15.1"]]);
+			expect(calls).toEqual([[...dshCommandPrefix(), "plugin", "--profile", "t", "add", "dsh-x@^0.15.1"]]);
 			expect(plan.command).toBe("dsh plugin --profile t add dsh-x@0.15.1");
 			const patched = JSON.parse(await readFile(path.join(dir, "package.json"), "utf8")) as { dependencies: Record<string, string> };
 			expect(patched.dependencies["dsh-x"]).toBe("^0.15.1");
@@ -167,7 +167,7 @@ describe("applyUpgrade / applyUninstall", () => {
 			expect(plan.wouldRemove).toBe(true);
 			expect(plan.profileName).toBe("t");
 			await applyUninstall(dir, plan, runner);
-			expect(calls).toEqual([["dsh", "plugin", "--profile", "t", "remove", "fx"]]);
+			expect(calls).toEqual([[...dshCommandPrefix(), "plugin", "--profile", "t", "remove", "fx"]]);
 			const pkg = JSON.parse(await readFile(path.join(dir, "package.json"), "utf8")) as { dsh: { profile: { bundles: string[] } } };
 			expect(pkg.dsh.profile.bundles).toEqual(["keep"]);
 		} finally {

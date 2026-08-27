@@ -45,6 +45,18 @@ export interface CommandRunner {
 	(argv: readonly string[], opts: { cwd: string; timeoutMs: number }): Promise<{ code: number; output: string }>;
 }
 
+/**
+ * Resolve the prefix for invoking dsh commands.
+ * Prefers the current node executable and dsh entrypoint to work seamlessly across
+ * Volta, nvm, fnm, mise, and container environments without relying on ambient PATH.
+ */
+export function dshCommandPrefix(): string[] {
+	if (process.argv[1] && (process.argv[1].endsWith("/dsh") || process.argv[1].includes("bin/dsh") || process.argv[1].endsWith("\\dsh") || process.argv[1].includes("bin\\dsh"))) {
+		return [process.execPath, process.argv[1]];
+	}
+	return ["dsh"];
+}
+
 function npmSpecifier(original: string, latest: string): string {
 	const s = original.trim();
 	if (s.startsWith("~")) return `~${latest}`;
@@ -143,7 +155,8 @@ export async function applyUpgrade(profileDir: string, plan: UpgradePlan, runner
 	data.dependencies[plan.name] = plan.newSpecifier;
 	await fs.writeFile(pkgPath, `${JSON.stringify(data, null, 2)}\n`);
 
-	const { code, output } = await runner(["dsh", "plugin", "--profile", plan.profileName, "add", `${plan.name}@${plan.newSpecifier}`], { cwd: profileDir, timeoutMs: 600_000 });
+	const cmd = [...dshCommandPrefix(), "plugin", "--profile", plan.profileName, "add", `${plan.name}@${plan.newSpecifier}`];
+	const { code, output } = await runner(cmd, { cwd: profileDir, timeoutMs: 600_000 });
 	if (code !== 0) {
 		await fs.writeFile(pkgPath, original).catch(() => undefined);
 		throw new Error(`dsh plugin add exited ${code}: ${output.trim().split("\n").slice(-8).join("\n")}`);
@@ -193,7 +206,8 @@ export async function applyUninstall(profileDir: string, plan: UninstallPlan, ru
 	const output: string[] = [];
 	try {
 		if (plan.inDependencies) {
-			const { code, output: out } = await runner(["dsh", "plugin", "--profile", plan.profileName, "remove", plan.name], { cwd: profileDir, timeoutMs: 600_000 });
+			const cmd = [...dshCommandPrefix(), "plugin", "--profile", plan.profileName, "remove", plan.name];
+			const { code, output: out } = await runner(cmd, { cwd: profileDir, timeoutMs: 600_000 });
 			output.push(out);
 			if (code !== 0) throw new Error(`dsh plugin remove exited ${code}: ${out.trim().split("\n").slice(-8).join("\n")}`);
 		}

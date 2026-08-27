@@ -1,6 +1,6 @@
 {
 	"name": "dsh-plugin-dashboard",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "DSH third-party plugin version dashboard: a Web Settings tab listing installed plugins with current/latest versions (npm registry or git tags/HEAD) and one-click upgrade.",
 	"type": "module",
 	"main": "lib/host.js",
