@@ -102,10 +102,16 @@ export function subprocessRunner(sub: SubprocessRuntime): CommandRunner {
 	return async (argv, opts) => {
 		const aborter = new AbortController();
 		const timer = setTimeout(() => aborter.abort(), opts.timeoutMs);
+		// Prepend current node bin directory to PATH so child processes (like dsh -> pnpm)
+		// can reliably resolve binaries even in mise/volta/fnm stripped environments.
+		const nodeBinDir = path.dirname(process.execPath);
+		const currentPath = process.env.PATH ?? "";
+		const enrichedPath = currentPath ? `${nodeBinDir}${path.delimiter}${currentPath}` : nodeBinDir;
 		try {
 			const handle = sub.spawn({
 				argv,
 				cwd: opts.cwd,
+				env: { PATH: enrichedPath },
 				stdio: {
 					stdin: "ignore",
 					stdout: { maxBytes: 512_000 },
