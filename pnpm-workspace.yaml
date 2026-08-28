@@ -12,8 +12,10 @@ allowBuilds:
 # 混用不同 rc 会触发 peer 冲突（cordis 服务实例不同源）。
 catalog:
   '@deepseek-ai/cordis': ^4.0.1
+  '@deepseek-ai/dsh-api-remotes': ^0.1.1-rc.2
   '@deepseek-ai/dsh-attachment': ^0.1.1-rc.2
-  '@deepseek-ai/dsh-client-runtime': ^0.1.1-rc.2
+  '@deepseek-ai/dsh-client-locale': ^0.1.1-rc.2
+  '@deepseek-ai/dsh-client-ui-renderer': ^0.1.1-rc.2
   '@deepseek-ai/dsh-client-ui-settings': ^0.1.1-rc.2
   '@deepseek-ai/dsh-client-ui-slots': ^0.1.1-rc.2
   '@deepseek-ai/dsh-client-ui-theme': ^0.1.1-rc.2

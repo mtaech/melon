@@ -5,8 +5,9 @@
  * the host half's /plugins/dsh-plugin-dashboard/api routes on the same origin.
  */
 import React, { useEffect, useState } from "react";
+import type { Context as ClientContext } from "@deepseek-ai/cordis";
 import type {} from "@deepseek-ai/dsh-client-ui-settings/client";
-import type { ClientContext } from "@deepseek-ai/dsh-client-runtime/client";
+import type {} from "@deepseek-ai/dsh-client-ui-renderer/client";
 import type { PropsRuntime, InjectFace } from "@deepseek-ai/dsh-client-ui-slots";
 
 const ROUTE_PREFIX = "/plugins/dsh-plugin-dashboard/api";

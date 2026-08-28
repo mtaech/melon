@@ -15,5 +15,8 @@ Desktop.ini
 
 .migrate-src/
 
+# 本地 DSH 联调验证产生的状态（verify-new-dsh.mjs 记录原始 symlink 目标）
+scripts/.verify-state.json
+
 # whalenest 是独立仓库，只是恰好放在同级目录
 dsh-desktop/

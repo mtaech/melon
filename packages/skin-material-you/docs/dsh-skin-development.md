@@ -196,7 +196,8 @@ DSH 是 Cordis 插件架构，主题插件本身就是一个客户端插件。�
     },
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-renderer",
         "@deepseek-ai/dsh-client-ui-theme"
       ],
       "platform": "web"
@@ -220,14 +221,14 @@ DSH 是 Cordis 插件架构，主题插件本身就是一个客户端插件。�
 ```
 
 > ⚠️ **inject 有两层，名字体系不同（踩坑点）**：
-> - `package.json` 的 `dsh.client.inject` 写**包名**（`@deepseek-ai/dsh-client-runtime`…），
+> - `package.json` 的 `dsh.client.inject` 写**包名**（`@deepseek-ai/dsh-client-ui-theme`…），
 >   用于宿主侧组合 boot manifest（prefetch 顺序等）。
 > - **客户端 bundle 里 `export const inject` 必须写服务名**（`theme` / `slots` / `locale` / `sessions`…），
 >   这是 cordis fiber 真正等待的服务。写包名会导致 fiber 永远 pending：
 >   `web boot: 1 entry did not activate ... pending (waiting for services: ...)`，
 >   界面卡在 "Failed to load plugins"。
 > - 服务名是各包在客户端 `ctx.provide(...)` 注册的名字：`dsh-client-ui-theme` 注册 `theme`、
->   `dsh-client-runtime` 注册 `sessions`/`workspaces`、`dsh-client-ui-layout` 注册 `layout`。
+>   `dsh-client-ui-renderer` 注册 `slots`、`dsh-client-locale` 注册 `locale`。
 >   参考实现：`dsh-ads` 源码 `export const inject = ['slots', 'locale']`。
 > - 用哪个服务就 inject 哪个：皮肤只用 `ctx.theme`，所以 `export const inject = ['theme']`。
 
@@ -337,7 +338,7 @@ dsh plugin --profile web add "file:/绝对/路径/到/皮肤包"
   "dsh": {
     "bundle": { "patch": "./cordis.patch.yml" },
     "client": {
-      "inject": ["@deepseek-ai/dsh-client-runtime", "@deepseek-ai/dsh-client-ui-theme"],
+      "inject": ["@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-ui-renderer", "@deepseek-ai/dsh-client-ui-theme"],
       "platform": "web"
     }
   }
