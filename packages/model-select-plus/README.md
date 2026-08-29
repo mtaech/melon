@@ -1,33 +1,66 @@
-# model-select-plus
+# dsh-model-select-plus
 
-对 DeepSeek Harness 网页端 **模型选择弹窗**（composer 底部左侧的 `conversation.input.model` 座位）的信息增强式重写。
+对 DeepSeek Harness 网页端 **模型选择弹窗**（composer 左下角 `conversation.input.model` 座位）的信息增强式重写，打包为一个可安装、可发布到 npm 的 dsh 插件。
 
-基于 `deepseek-harness` 源码实现，核心数据路径完全复用官方会话模型目录，而不是自造数据：
+## 特性
 
-- Host 侧通过 `ctx.apiProxy.sessions.models({ sessionId })` 和 `ctx.apiProxy.sessions.selectModel({...})` 读取/写入真实目录与选择——这正是运行期 apiproxy 的 `session.models` / `session.selectModel` 处理器，选中后会正确设置该会话 Agent 的实时选择引用并保存默认模型（无需触碰私有 `sessionController` 引用）。
-- Client 侧把默认的 `ModelSelect` 替换为自定义组件，注册到 `conversation.input.model` 单座位，`priority: -1`（低于官方占位的 `0`，按“数值小者渲染”被选中）。
+1. **信息增强**：模型按 provider 分组，行内显示名称、2 行截断描述；推理等级以 chips（含“默认”）呈现，悬停可见说明。
+2. **推理等级一键切换**：行内点等级 chip 即切换模型+推理等级，无需二级钻取。
+3. **搜索**：按模型名 / 描述 / provider 过滤，带放大镜图标与清除按钮。
+4. **收藏置顶**：行首星标收藏，收藏项置顶为独立分组（插件生命周期内的浏览器内存保存）。
+5. **视觉打磨**：`--dsw-alias-*` 主题令牌，浅/深色自适应；面板入场动画、quiet 触发按钮、细滚动条、居中的 SVG 星标。
 
-## 优化点
+## 安装
 
-1. **信息增强**：每个模型行显示名称、所属 provider 标签与 `description`；每个推理等级显示 `name`（title 提示 `description`）。
-2. **推理等级快捷切换**：模型行内直接渲染等级 chips（含“默认”），点一下即切换模型+推理等级，无需二级钻取。
-3. **搜索过滤**：按模型名 / 描述 / provider 名过滤。
-4. **收藏置顶**：行首星标收藏，收藏项置顶为独立分组（进程内内存保存，插件生命周期内有效）。
-5. **视觉打磨**：使用 `--dsw-alias-*` 主题令牌，浅色/深色主题自适应；悬浮/选中态、圆角、阴影、滚动。
+把本包加进 dsh profile 的依赖即可（配合 `dsh.bundle.patch` 自动挂载 host / client 双侧）：
 
-## 文件
+```bash
+# 在 dsh profile 目录里
+pnpm add dsh-model-select-plus
+# 或
+npm i dsh-model-select-plus
+```
 
-- `src/client.js` — 浏览器端插件本体（`conversation.input.model` 单座位替换）。
-- `src/host.js` — Host 端 `harness.handle` 两个私有 RPC：`mdsl.catalog`、`mdsl.select`。
-- 组件通过 Client→Host 私有 JSON RPC（`host.call`）访问 `mdsl.catalog` / `mdsl.select`。
+重启 `dsh web` 后，composer 的模型选择框即被替换。
 
-## 如何转为可持久安装的 dsh 插件包
+- Host 侧（exports `.`）通过 `cordis.patch.yml` 挂载，向宿主 webserver 注册
+  `GET /plugins/dsh-model-select-plus/api/catalog` 与 `POST /plugins/dsh-model-select-plus/api/select`。
+- Client 侧（exports `./client`）由 `dsh.client` 注入加载，替换 `conversation.input.model` 占位（`priority: -1`）。
 
-参考 `packages/plugin-dashboard`：
+两个 API 都调用宿主的 `ctx.apiProxy.sessions.models / selectModel`——这是运行期 apiproxy 的真实目录与选择处理器，复用 `session.models` / `session.selectModel`，选中后会正确设置会话 Agent 的实时选择引用并保存默认模型。
 
-1. `src/client.js` 作为 client 入口，用 esbuild 打成 `lib/client.cjs`（沿用 `scripts/build-client.mjs` 思路，注入 `@deepseek-ai/dsh-client-ui-slots`、`@deepseek-ai/dsh-client-locale`）。
-2. `src/host.js` 作为 host 入口，通过 `cordis.patch.yml` 在宿主组合里挂载插件行。
-3. `package.json` 的 `dsh.client.inject` 声明所需 client 服务（`@deepseek-ai/dsh-client-ui-slots`）。
-4. `dsh` 会把 client 包打进 `window.__DSH_BOOT__` 运行时，host 包由组合实例化。
+## 数据路径
 
-> 本目录当前仅作参考实现，未配置 `package.json`，不会进入 pnpm workspace 构建。
+```
+浏览器 (client bundle)
+  └─ fetch /plugins/dsh-model-select-plus/api/{catalog,select}
+       └─ host plugin (ctx.webServer)  →  ctx.apiProxy.sessions.{models,selectModel}
+```
+
+（持久化插件避免动态插件的 `harness`/`host` 内建，采用与 `plugin-dashboard` 相同的 webserver+fetch 模式。）
+
+## 开发
+
+```bash
+pnpm install          # workspace 安装
+pnpm run build        # esbuild 打包 src/client.js → lib/client.cjs，并拷贝 host 到 lib/
+pnpm run smoke        # 校验 lib/ 产物
+```
+
+`lib/` 为构建产物、已被 `.gitignore` 忽略；`npm publish` 会在 `prepublishOnly` 阶段自动构建。
+
+## 发布到 npmjs
+
+```bash
+# 首次：登录
+npm login
+
+# 在包目录
+npm publish
+```
+
+`publishConfig` 已设为 `access: public` + `registry: https://registry.npmjs.org/`。
+
+## License
+
+MIT

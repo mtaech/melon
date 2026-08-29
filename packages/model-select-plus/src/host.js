@@ -1,65 +1,104 @@
 /**
- * model-select-plus — Host half.
+ * dsh-model-select-plus — Host half.
  *
- * Registers two package-private Client→Host JSON-RPC handlers. Both reuse the
- * RUNNING harness's own model directory instead of re-deriving data. The
- * `sessionController` service key is not exposed to a dynamic plugin's Host
- * context, and the newer `session/modelCatalog` typert endpoint does not exist
- * in this built harness (it uses the apiproxy `session.models` RPC). So the
- * handlers call the reachable `ctx.apiProxy.sessions` API directly:
- *   - `mdsl.catalog`: `apiProxy.sessions.models({ sessionId })` → provider-
- *     grouped models, provider failures, and the effective current selection
- *     (`{ current, routable, groups, failures }`).
- *   - `mdsl.select`: `apiProxy.sessions.selectModel({ sessionId, provider,
- *     model, reasoningEffort? })` → validates via llm.resolveCallConfig,
- *     sets the Agent's live selection ref, then saves the deployment default.
+ * A cordis plugin that exposes the real Session model catalog + selection over
+ * the host webserver, so the bundled browser half can read/write it with plain
+ * `fetch`. Persistent plugins avoid the dynamic-plugin `harness`/`host`
+ * builtins, so this follows the `plugin-dashboard` pattern (webServer routes).
  *
- * The Client half calls these via `host.call('mdsl.catalog'|'mdsl.select', …)`.
+ * Both handlers call the running harness's own `apiProxy.sessions` API:
+ *   - GET  /plugins/dsh-model-select-plus/api/catalog?sessionId=<id>
+ *     → apiProxy.sessions.models({ rpcId, payload:{ sessionId } })
+ *     → { groups, failures, current, routable }
+ *   - POST /plugins/dsh-model-select-plus/api/select
+ *     body { sessionId, provider, model, reasoningEffort? }
+ *     → apiProxy.sessions.selectModel(...) → { ok, selected } | { ok:false, message }
+ *
+ * `selectModel` validates via llm.resolveCallConfig, sets the session Agent's
+ * live selection ref and saves the deployment default — the exact shipped path.
  *
  * @param ctx - the mounted host Cordis context.
  */
+export const name = "dsh-model-select-plus";
+export const inject = ["webServer"];
+
+const PREFIX = "/plugins/dsh-model-select-plus/api";
+
+function json(res, code, body) {
+  const payload = JSON.stringify(body);
+  res.writeHead(code, {
+    "content-type": "application/json; charset=utf-8",
+    "content-length": Buffer.byteLength(payload),
+  });
+  res.end(payload);
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = "";
+    req.on("data", (d) => {
+      data += d.toString("utf8");
+      if (data.length > 1_000_000) reject(new Error("body too large"));
+    });
+    req.on("end", () => resolve(data));
+    req.on("error", reject);
+  });
+}
+
 export function apply(ctx) {
-  const proxy = () => ctx.get('apiProxy')
+  const api = () => ctx.get("apiProxy");
 
-  // Catalog + current selection for one session.
-  ctx.effect(() => harness.handle('mdsl.catalog', async (args) => {
-    const p = proxy()
-    if (p === undefined || (p.sessions === undefined || p.sessions.models === undefined)) {
-      return { error: 'apiProxy.sessions service unavailable' }
-    }
+  const handler = async (req, res) => {
     try {
-      const sessionId = args === undefined ? undefined : args.sessionId
-      const res = await p.sessions.models({ rpcId: 'mdsl-catalog', payload: { sessionId } })
-      if (res.result.ok === true) {
-        const v = res.result.value
-        return { groups: v.groups, failures: v.failures, current: v.current, routable: v.routable }
+      const url = new URL(req.url ?? "/", "http://localhost");
+      const pathname = url.pathname;
+      const proxy = api();
+      if (proxy === undefined || proxy.sessions === undefined) {
+        json(res, 500, { error: "apiProxy.sessions unavailable" });
+        return;
       }
-      return { error: (res.result.error && res.result.error.message) || '加载模型目录失败' }
-    } catch (error) {
-      return { error: String((error && error.message) || error) }
-    }
-  }))
 
-  // Validate and persist one selection.
-  ctx.effect(() => harness.handle('mdsl.select', async (args) => {
-    const p = proxy()
-    if (p === undefined || (p.sessions === undefined || p.sessions.selectModel === undefined)) {
-      return { ok: false, message: 'apiProxy.sessions service unavailable' }
-    }
-    try {
-      const res = await p.sessions.selectModel({
-        rpcId: 'mdsl-select',
-        payload: {
-          sessionId: args.sessionId,
-          provider: args.provider,
-          model: args.model,
-          ...(args.reasoningEffort === undefined ? {} : { reasoningEffort: args.reasoningEffort }),
-        },
-      })
-      if (res.result.ok === true) return { ok: true, selected: res.result.value.selected }
-      return { ok: false, message: (res.result.error && res.result.error.message) || '模型不可用' }
+      if (req.method === "GET" && pathname === `${PREFIX}/catalog`) {
+        const sessionId = url.searchParams.get("sessionId") ?? "";
+        const r = await proxy.sessions.models({ rpcId: "mdsl-catalog", payload: { sessionId } });
+        if (r.result.ok === true) {
+          const v = r.result.value;
+          json(res, 200, { groups: v.groups, failures: v.failures, current: v.current, routable: v.routable });
+        } else {
+          json(res, 200, { error: (r.result.error && r.result.error.message) || "加载模型目录失败" });
+        }
+        return;
+      }
+
+      if (req.method === "POST" && pathname === `${PREFIX}/select`) {
+        const body = JSON.parse((await readBody(req)) || "{}");
+        const r = await proxy.sessions.selectModel({
+          rpcId: "mdsl-select",
+          payload: {
+            sessionId: body.sessionId,
+            provider: body.provider,
+            model: body.model,
+            ...(body.reasoningEffort === undefined || body.reasoningEffort === null
+              ? {}
+              : { reasoningEffort: body.reasoningEffort }),
+          },
+        });
+        if (r.result.ok === true) {
+          json(res, 200, { ok: true, selected: r.result.value.selected });
+        } else {
+          json(res, 200, { ok: false, message: (r.result.error && r.result.error.message) || "模型不可用" });
+        }
+        return;
+      }
+
+      json(res, 404, { error: "not found" });
     } catch (error) {
-      return { ok: false, message: String((error && error.message) || error) }
+      json(res, 500, { error: error instanceof Error ? error.message : String(error) });
     }
-  }))
+  };
+
+  const disposer = ctx.webServer.register({ kind: "prefix", path: PREFIX, handler });
+  return () => {
+    disposer();
+  };
 }

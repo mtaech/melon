@@ -1,0 +1,90 @@
+{
+	"name": "dsh-model-select-plus",
+	"version": "0.1.0",
+	"description": "A richer model-selection popup for DeepSeek Harness: provider-grouped models with descriptions, inline reasoning-effort chips, search and pinned favorites — replaces the composer's default ModelSelect.",
+	"type": "module",
+	"main": "lib/host.js",
+	"types": "lib/host.d.ts",
+	"exports": {
+		".": {
+			"types": "./lib/host.d.ts",
+			"default": "./lib/host.js"
+		},
+		"./client": "./lib/client.cjs",
+		"./cordis.patch.yml": "./cordis.patch.yml",
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"lib",
+		"src",
+		"cordis.patch.yml",
+		"README.md",
+		"LICENSE"
+	],
+	"dsh": {
+		"bundle": {
+			"patch": "./cordis.patch.yml"
+		},
+		"client": {
+			"inject": [
+				"@deepseek-ai/dsh-client-ui-renderer",
+				"@deepseek-ai/dsh-client-ui-slots"
+			],
+			"platform": "web"
+		}
+	},
+	"license": "MIT",
+	"author": "画野 (mtaech)",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/mtaech/melon.git",
+		"directory": "packages/model-select-plus"
+	},
+	"homepage": "https://github.com/mtaech/melon/tree/main/packages/model-select-plus#readme",
+	"bugs": {
+		"url": "https://github.com/mtaech/melon/issues"
+	},
+	"keywords": [
+		"dsh",
+		"dsh-plugin",
+		"model-select",
+		"model-selector",
+		"composer"
+	],
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	},
+	"scripts": {
+		"build": "node build.mjs",
+		"smoke": "pnpm run build && node scripts/smoke.mjs",
+		"prepublishOnly": "pnpm run build"
+	},
+	"devDependencies": {
+		"esbuild": "catalog:"
+	},
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "^4.0.1",
+		"@deepseek-ai/dsh-host-webserver": "^0.1.1-rc.2",
+		"@deepseek-ai/dsh-client-ui-renderer": "^0.1.1-rc.2",
+		"@deepseek-ai/dsh-client-ui-slots": "^0.1.1-rc.2",
+		"react": "^18.3.1"
+	},
+	"peerDependenciesMeta": {
+		"@deepseek-ai/cordis": {
+			"optional": true
+		},
+		"@deepseek-ai/dsh-host-webserver": {
+			"optional": true
+		},
+		"@deepseek-ai/dsh-client-ui-renderer": {
+			"optional": true
+		},
+		"@deepseek-ai/dsh-client-ui-slots": {
+			"optional": true
+		},
+		"react": {
+			"optional": true
+		}
+	}
+}

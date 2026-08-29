@@ -1,0 +1,8 @@
+# dsh bundle patch: inserts this plugin into a profile's layer stack. The host
+# half (exports ".") registers the /plugins/dsh-model-select-plus/api routes on
+# the host webserver; the `dsh.client` declaration in package.json makes the
+# browser half (exports "./client") load in the web GUI and replace the
+# composer's model-selection seat.
+- insert:
+    - id: model-select-plus
+      name: 'dsh-model-select-plus'
