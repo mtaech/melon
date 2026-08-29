@@ -137,6 +137,10 @@ function ModelSelectLite(props) {
       });
   };
 
+  // Load on mount (and when the session changes) so the trigger shows the
+  // current model immediately instead of the "选择模型" placeholder.
+  React.useEffect(() => { if (sessionId !== undefined) load(); }, [sessionId]);
+
   const openMenu = () => { setOpen(true); load(); };
   const closeMenu = () => { setOpen(false); setQuery(""); };
 
