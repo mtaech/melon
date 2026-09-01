@@ -27,14 +27,14 @@ npm i dsh-model-select-plus
   `GET /plugins/dsh-model-select-plus/api/catalog` 与 `POST /plugins/dsh-model-select-plus/api/select`。
 - Client 侧（exports `./client`）由 `dsh.client` 注入加载，替换 `conversation.input.model` 占位（`priority: -1`）。
 
-两个 API 都调用宿主的 `ctx.apiProxy.sessions.models / selectModel`——这是运行期 apiproxy 的真实目录与选择处理器，复用 `session.models` / `session.selectModel`，选中后会正确设置会话 Agent 的实时选择引用并保存默认模型。
+两个 API 都调用宿主的 `ctx.sessionController`——这是 `0.1.2` 里取代已删除 `apiProxy.sessions` 的 Remote 服务，`modelCatalog()` 列出当前可路由的模型目录，`selectModel()` 经 `llm.resolveCallConfig` 校验后设置会话 Agent 的实时选择引用并保存默认模型。
 
 ## 数据路径
 
 ```
 浏览器 (client bundle)
   └─ fetch /plugins/dsh-model-select-plus/api/{catalog,select}
-       └─ host plugin (ctx.webServer)  →  ctx.apiProxy.sessions.{models,selectModel}
+       └─ host plugin (ctx.webServer)  →  ctx.sessionController.{modelCatalog,selectModel}
 ```
 
 （持久化插件避免动态插件的 `harness`/`host` 内建，采用与 `plugin-dashboard` 相同的 webserver+fetch 模式。）

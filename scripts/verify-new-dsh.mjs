@@ -36,6 +36,7 @@ const DSH_PKGS = {
   "dsh-llm": "packages/llm/llm",
   "dsh-session": "packages/core/session",
   "dsh-subprocess": "packages/subprocess/subprocess",
+  "dsh-util-values": "packages/util/values",
   "dsh-host-webserver": "packages/host/webserver",
   "dsh-client-ui-settings": "packages/client/ui-settings",
   "dsh-client-ui-slots": "packages/client/ui-slots",
@@ -49,7 +50,7 @@ const DSH_PKGS = {
 // melon package -> the dsh names it should resolve for typecheck.
 const PACKAGES = {
   "ast-edit-tool": ["cordis", "schemastery", "dsh-tools"],
-  "browser-tool": ["cordis", "schemastery", "dsh-tools", "dsh-attachment", "dsh-llm", "dsh-session"],
+  "browser-tool": ["cordis", "schemastery", "dsh-tools", "dsh-attachment", "dsh-llm", "dsh-session", "dsh-util-values"],
   "plugin-dashboard": ["cordis", "dsh-host-webserver", "dsh-subprocess", "dsh-client-ui-settings", "dsh-client-ui-slots", "dsh-client-ui-theme", "dsh-client-locale", "dsh-client-ui-renderer", "dsh-api-remotes"],
   "skin-material-you": ["cordis", "dsh-client-ui-theme"],
 };

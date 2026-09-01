@@ -16,7 +16,7 @@ import { acquireBrowser, releaseBrowser, type ResolvedBrowserConfig } from "./br
 import { acquireTab, getTab, releaseTab, runInTab, expandBrowserScreenshotDir } from "./browsers/tab-supervisor.js";
 import { resolveRelayKind } from "./relay/kind.js";
 import type { ImageContent, RunResultOk, TextContent } from "./browsers/types.js";
-import type { JsonValue } from "@deepseek-ai/dsh-session";
+import type { JsonValue } from "@deepseek-ai/dsh-util-values";
 
 export interface BrowserToolOptions {
 	/** Allow spawning/attaching a browser. False disables the tool. */

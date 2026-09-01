@@ -1,6 +1,6 @@
 {
 	"name": "dsh-ast-edit-tool",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "DSH structural code-edit tool: preview and apply ast-grep rewrites ($NAME / $$$ARGS metavariables) over files, directories, and globs, ported from oh-my-pi's ast_edit.",
 	"type": "module",
 	"main": "lib/index.js",
@@ -58,8 +58,8 @@
 		"ignore": "^7.0.3"
 	},
 	"peerDependencies": {
-		"@deepseek-ai/dsh-tools": "^0.1.1-rc.2",
-		"@deepseek-ai/schemastery": "^3.18.1"
+		"@deepseek-ai/dsh-tools": "^0.1.2-alpha.3",
+		"@deepseek-ai/schemastery": "^3.18.2"
 	},
 	"peerDependenciesMeta": {
 		"@deepseek-ai/dsh-tools": {

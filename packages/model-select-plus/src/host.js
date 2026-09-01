@@ -6,21 +6,28 @@
  * `fetch`. Persistent plugins avoid the dynamic-plugin `harness`/`host`
  * builtins, so this follows the `plugin-dashboard` pattern (webServer routes).
  *
- * Both handlers call the running harness's own `apiProxy.sessions` API:
+ * Both handlers call the running harness's own `sessionController` Remote
+ * service (the `0.1.2` replacement for the removed `apiProxy.sessions`):
  *   - GET  /plugins/dsh-model-select-plus/api/catalog?sessionId=<id>
- *     → apiProxy.sessions.models({ rpcId, payload:{ sessionId } })
- *     → { groups, failures, current, routable }
+ *     → ctx.sessionController.modelCatalog()
+ *     → { default, routableProviders, groups, failures }, then folded with the
+ *       session's durable modelSelection projection to produce the client
+ *       shape { groups, failures, current, routable }.
  *   - POST /plugins/dsh-model-select-plus/api/select
  *     body { sessionId, provider, model, reasoningEffort? }
- *     → apiProxy.sessions.selectModel(...) → { ok, selected } | { ok:false, message }
+ *     → ctx.sessionController.selectModel(...) → { selected } | RemoteError
  *
- * `selectModel` validates via llm.resolveCallConfig, sets the session Agent's
- * live selection ref and saves the deployment default — the exact shipped path.
+ * `modelCatalog()` describes every currently routable provider/model without
+ * requiring a Session; `selectModel()` validates via llm.resolveCallConfig,
+ * sets the session Agent's live selection ref and saves the deployment default
+ * — the exact shipped path. The per-session `current`/`routable` client fields
+ * are derived here from the durable `modelSelection` projection (the client
+ * face of the same fold the first-party ModelDirectory reads).
  *
  * @param ctx - the mounted host Cordis context.
  */
 export const name = "dsh-model-select-plus";
-export const inject = ["webServer"];
+export const inject = ["webServer", "sessionController", "sessionProjections", "sessions"];
 
 const PREFIX = "/plugins/dsh-model-select-plus/api";
 
@@ -45,55 +52,85 @@ function readBody(req) {
   });
 }
 
-export function apply(ctx) {
-  const api = () => ctx.get("apiProxy");
+/**
+ * Derive the client's per-session `current`/`routable` from the durable
+ * modelSelection projection (pending → lastUsed) falling back to the catalog's
+ * deployment default. Mirrors the first-party ModelDirectory fold
+ * (`current = projected.next ?? catalog.default`) so the client's "current
+ * model" trigger reflects the session's actual selection rather than guessing.
+ * A session that is not live (cold/persisted) still reports the deployment
+ * default so the trigger never shows an empty placeholder when the catalog is
+ * ready.
+ *
+ * @param ctx - host context (sessionProjections, sessions).
+ * @param sessionId - the session being previewed.
+ * @param catalog - `modelCatalog()` result for this host generation.
+ * @returns `{ current, routable }` where current is never null while the catalog is ready.
+ */
+function currentSelection(ctx, sessionId, catalog) {
+  const session = ctx.sessions.get(sessionId);
+  let pending;
+  let lastUsed;
+  if (session !== undefined) {
+    const projections = ctx.sessionProjections.stateOf(session, "modelSelection");
+    if (projections !== undefined) {
+      pending = projections.pending;
+      lastUsed = projections.lastUsed;
+    }
+  }
+  // pending → lastUsed → deployment default (the same precedence the first-party
+  // client uses for `projected.next`, falling back to catalog.default).
+  const current = pending ?? lastUsed ?? catalog.default;
+  const routable = (catalog.routableProviders ?? []).includes(current.provider);
+  return { current: { ...current }, routable };
+}
 
+export function apply(ctx) {
   const handler = async (req, res) => {
     try {
       const url = new URL(req.url ?? "/", "http://localhost");
       const pathname = url.pathname;
-      const proxy = api();
-      if (proxy === undefined || proxy.sessions === undefined) {
-        json(res, 500, { error: "apiProxy.sessions unavailable" });
-        return;
-      }
 
       if (req.method === "GET" && pathname === `${PREFIX}/catalog`) {
         const sessionId = url.searchParams.get("sessionId") ?? "";
-        const r = await proxy.sessions.models({ rpcId: "mdsl-catalog", payload: { sessionId } });
-        if (r.result.ok === true) {
-          const v = r.result.value;
-          json(res, 200, { groups: v.groups, failures: v.failures, current: v.current, routable: v.routable });
-        } else {
-          json(res, 200, { error: (r.result.error && r.result.error.message) || "加载模型目录失败" });
-        }
+        const catalog = await ctx.sessionController.modelCatalog();
+        const current = currentSelection(ctx, sessionId, catalog);
+        json(res, 200, {
+          groups: catalog.groups,
+          failures: catalog.failures,
+          current: current.current,
+          routable: current.routable,
+          default: catalog.default,
+          routableProviders: catalog.routableProviders,
+        });
         return;
       }
 
       if (req.method === "POST" && pathname === `${PREFIX}/select`) {
         const body = JSON.parse((await readBody(req)) || "{}");
-        const r = await proxy.sessions.selectModel({
-          rpcId: "mdsl-select",
-          payload: {
-            sessionId: body.sessionId,
-            provider: body.provider,
-            model: body.model,
-            ...(body.reasoningEffort === undefined || body.reasoningEffort === null
-              ? {}
-              : { reasoningEffort: body.reasoningEffort }),
-          },
+        const value = await ctx.sessionController.selectModel({
+          sessionId: body.sessionId,
+          provider: body.provider,
+          model: body.model,
+          ...(body.reasoningEffort === undefined || body.reasoningEffort === null
+            ? {}
+            : { reasoningEffort: body.reasoningEffort }),
         });
-        if (r.result.ok === true) {
-          json(res, 200, { ok: true, selected: r.result.value.selected });
-        } else {
-          json(res, 200, { ok: false, message: (r.result.error && r.result.error.message) || "模型不可用" });
-        }
+        json(res, 200, { ok: true, selected: value.selected });
         return;
       }
 
       json(res, 404, { error: "not found" });
     } catch (error) {
-      json(res, 500, { error: error instanceof Error ? error.message : String(error) });
+      // selectModel throws a RemoteError on failure (e.g. model-unavailable);
+      // report it as a soft 200 `{ ok:false, message }` so the client renders
+      // the in-menu error instead of a hard network failure.
+      const remote = error && typeof error === "object" ? error : undefined;
+      const code = remote && remote.code ? remote.code : undefined;
+      const message = remote && remote.message
+        ? remote.message
+        : (error instanceof Error ? error.message : String(error));
+      json(res, 200, { ok: false, message, code });
     }
   };
 
