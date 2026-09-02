@@ -12,6 +12,8 @@ export interface ProfileSummary {
 	dir: string;
 	bundles: string[];
 	dependencies: Record<string, string>;
+	/** User patch-layer lifecycle: "live" hot-reloads cordis.patch.yml, "startup" applies it at next boot. */
+	patchReload: "live" | "startup" | null;
 	packageJson: Record<string, unknown>;
 }
 
@@ -73,12 +75,14 @@ export async function readProfileDir(dir: string, name?: string): Promise<Profil
 		throw new Error(`profile ${JSON.stringify(name)} package.json is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
 	}
 	const dependencies = (data.dependencies ?? {}) as Record<string, string>;
-	const dsh = (data.dsh ?? {}) as { profile?: { bundles?: string[] } };
+	const dsh = (data.dsh ?? {}) as { profile?: { bundles?: string[]; patchReload?: unknown } };
+	const patchReload = dsh.profile?.patchReload;
 	return {
 		name: name ?? path.basename(dir),
 		dir,
 		bundles: Array.isArray(dsh.profile?.bundles) ? (dsh.profile.bundles as string[]) : [],
 		dependencies,
+		patchReload: patchReload === "live" || patchReload === "startup" ? patchReload : null,
 		packageJson: data,
 	};
 }

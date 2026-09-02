@@ -17,9 +17,10 @@ import type { SubprocessRuntime } from "@deepseek-ai/dsh-subprocess";
 import { Registry } from "./registry.js";
 import { readProfileDir, readInstalled, readLockCommit, isCorePackage, sourceOf, parseGithubSpec, type ProfileSummary, type PluginSource } from "./profile.js";
 import { planUpgrade, applyUpgrade, planUninstall, applyUninstall, type UpgradePlan, type UninstallPlan, type CommandRunner } from "./upgrade.js";
+import { PATCH_FILENAME, applyDisable, applyEnable, hasDisableBlock, planDisable, planEnable, pluginRows, removeDisableBlock, type DisablePlan, type EnablePlan, type LoaderLike } from "./disable.js";
 
 export const name = "dsh-plugin-dashboard";
-export const inject = ["webServer", "subprocess"];
+export const inject = ["webServer", "subprocess", "loader"];
 
 export interface PluginEntry {
 	name: string;
@@ -33,6 +34,8 @@ export interface PluginEntry {
 	latest: { label: string; targetCommit: string | null; error: string | null } | null;
 	status: "update-available" | "up-to-date" | "not-installed" | "ahead" | "unknown" | "n-a";
 	upgradeable: boolean;
+	/** True when every loader row the plugin contributes is disabled (the plugin does not load). */
+	disabled: boolean;
 	/** Source page: GitHub repo for git deps, npm page for registry deps. */
 	url: string | null;
 }
@@ -142,7 +145,13 @@ function packageUrl(name: string, specifier: string, source: PluginSource): stri
 	return null;
 }
 
-async function buildInventory(profile: ProfileSummary, registry: Registry): Promise<PluginEntry[]> {
+/** The Loader service is a runtime contract of the dsh app boot; cordis Context has no typed property for it. */
+function loaderOf(ctx: Context): LoaderLike | undefined {
+	const withLoader = ctx as unknown as { loader?: LoaderLike };
+	return withLoader.loader;
+}
+
+async function buildInventory(profile: ProfileSummary, registry: Registry, loader: LoaderLike | undefined): Promise<PluginEntry[]> {
 	const lockText = await fs.readFile(path.join(profile.dir, "pnpm-lock.yaml"), "utf8").catch(() => "");
 	const names = new Set<string>([...Object.keys(profile.dependencies), ...profile.bundles]);
 	const sorted = [...names].sort();
@@ -152,6 +161,7 @@ async function buildInventory(profile: ProfileSummary, registry: Registry): Prom
 		const installed = await readInstalled(profile.dir, name);
 		const installedCommit = specifier ? readLockCommit(lockText, name) : null;
 		const source = specifier ? sourceOf(specifier) : "unknown";
+		const attrRows = loader ? pluginRows(loader, name) : [];
 		const entry: PluginEntry = {
 			name,
 			mounted: profile.bundles.includes(name),
@@ -164,6 +174,7 @@ async function buildInventory(profile: ProfileSummary, registry: Registry): Prom
 			latest: null,
 			status: "unknown",
 			upgradeable: false,
+			disabled: attrRows.length > 0 && attrRows.every((row) => row.disabled),
 			url: specifier ? packageUrl(name, specifier, source) : null,
 		};
 		if (!specifier || source === "local" || source === "unknown") {
@@ -202,6 +213,7 @@ function extractGhToken(output: string): string | undefined {
 export function apply(ctx: Context, options: HostOptions = {}): () => void {
 	const profileDir = resolveProfileDir(options.profileDir);
 	const runner = subprocessRunner(ctx.subprocess);
+	const loader = loaderOf(ctx);
 	const registry = options.registry ?? new Registry();
 	// private GitHub repos need a token; borrow the gh CLI's (the dsh process
 	// env carries its auth). Best-effort and async: later lookups pick it up.
@@ -225,7 +237,7 @@ export function apply(ctx: Context, options: HostOptions = {}): () => void {
 			if (req.method === "GET" && pathname === `${ROUTE_PREFIX}/list`) {
 				if (url.searchParams.get("force") === "1") registry.clearCache();
 				const profile = await readProfileDir(profileDir);
-				const plugins = await buildInventory(profile, registry);
+				const plugins = await buildInventory(profile, registry, loader);
 				json(res, 200, { profile: profile.name, dshRunning: await isDshRunning(runner), plugins });
 				return;
 			}
@@ -257,6 +269,62 @@ export function apply(ctx: Context, options: HostOptions = {}): () => void {
 				json(res, 200, { plan, applied: true, backupPath: applied.backupPath, log: splitLog(applied.output) });
 				return;
 			}
+			if (req.method === "POST" && pathname === `${ROUTE_PREFIX}/disable`) {
+				const body = JSON.parse((await readBody(req)) || "{}") as { name?: string; apply?: boolean };
+				if (!body.name) {
+					json(res, 400, { error: "name is required" });
+					return;
+				}
+				if (isCorePackage(body.name)) {
+					json(res, 400, { error: `${body.name} is a core dsh package and cannot be disabled` });
+					return;
+				}
+				const profile = await readProfileDir(profileDir);
+				if (!profile.dependencies[body.name]) {
+					json(res, 400, { error: `${body.name} is not a dependency of this profile` });
+					return;
+				}
+				const plan = planDisable(body.name, pluginRows(loader, body.name), profile.patchReload) as DisablePlan;
+				if (!body.apply) {
+					json(res, 200, { plan });
+					return;
+				}
+				if (plan.error || !plan.wouldChange) {
+					json(res, 200, { plan, applied: false, log: [] });
+					return;
+				}
+				const applied = await applyDisable(profile.dir, plan);
+				json(res, 200, { plan, applied: true, backupPath: applied.backupPath, log: applied.log });
+				return;
+			}
+			if (req.method === "POST" && pathname === `${ROUTE_PREFIX}/enable`) {
+				const body = JSON.parse((await readBody(req)) || "{}") as { name?: string; apply?: boolean };
+				if (!body.name) {
+					json(res, 400, { error: "name is required" });
+					return;
+				}
+				if (isCorePackage(body.name)) {
+					json(res, 400, { error: `${body.name} is a core dsh package and cannot be enabled` });
+					return;
+				}
+				const profile = await readProfileDir(profileDir);
+				if (!profile.dependencies[body.name]) {
+					json(res, 400, { error: `${body.name} is not a dependency of this profile` });
+					return;
+				}
+				const plan = (await planEnable(profile.dir, body.name, pluginRows(loader, body.name), profile.patchReload)) as EnablePlan;
+				if (!body.apply) {
+					json(res, 200, { plan });
+					return;
+				}
+				if (plan.error || !plan.wouldChange) {
+					json(res, 200, { plan, applied: false, log: [] });
+					return;
+				}
+				const applied = await applyEnable(profile.dir, plan);
+				json(res, 200, { plan, applied: true, backupPath: applied.backupPath, log: applied.log });
+				return;
+			}
 			if (req.method === "POST" && pathname === `${ROUTE_PREFIX}/uninstall`) {
 				const body = JSON.parse((await readBody(req)) || "{}") as { name?: string; apply?: boolean };
 				if (!body.name) {
@@ -274,7 +342,20 @@ export function apply(ctx: Context, options: HostOptions = {}): () => void {
 					return;
 				}
 				const applied = await applyUninstall(profile.dir, plan, runner);
-				json(res, 200, { plan, applied: true, backupPath: applied.backupPath, log: splitLog(applied.output) });
+				const log = splitLog(applied.output);
+				// A disabled plugin's managed block targets rows that will no longer
+				// exist after uninstall; drop it so the next boot does not warn.
+				try {
+					const patchPath = path.join(profile.dir, PATCH_FILENAME);
+					const content = await fs.readFile(patchPath, "utf8");
+					if (hasDisableBlock(content, body.name)) {
+						await fs.writeFile(patchPath, removeDisableBlock(content, body.name));
+						log.push(`已清理 ${PATCH_FILENAME} 中 ${body.name} 的禁用块`);
+					}
+				} catch {
+					// best-effort: a stale block only warns at boot
+				}
+				json(res, 200, { plan, applied: true, backupPath: applied.backupPath, log });
 				return;
 			}
 			json(res, 404, { error: "not found" });

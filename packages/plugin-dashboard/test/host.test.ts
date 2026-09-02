@@ -6,6 +6,7 @@ import { chmodSync } from "node:fs";
 import { apply, type PluginEntry } from "../src/host.js";
 import type { RegistryLike } from "../src/upgrade.js";
 import type { GitLatest, NpmLatest } from "../src/registry.js";
+import { hasDisableBlock } from "../src/disable.js";
 
 function fakeRegistry(): RegistryLike {
 	return {
@@ -82,6 +83,7 @@ async function fixtureProfile(): Promise<string> {
 	}, null, 2) + "\n");
 	await writeFile(path.join(dir, "node_modules", "fx-npm", "package.json"), JSON.stringify({ version: "1.0.0", description: "fixture npm pkg" }));
 	await writeFile(path.join(dir, "node_modules", "fx-git", "package.json"), JSON.stringify({ version: "0.1.0" }));
+	await writeFile(path.join(dir, "cordis.patch.yml"), "# fixture user layer\n");
 	await writeFile(path.join(dir, "pnpm-lock.yaml"), `lockfileVersion: '9.0'
 
 importers:
@@ -104,7 +106,7 @@ interface Mounted {
 	route: { kind: string; path: string; handler: (req: unknown, res: unknown) => Promise<void> };
 }
 
-function mount(profileRoot: string, registry: RegistryLike, subprocess = fakeSubprocess()): Mounted {
+function mount(profileRoot: string, registry: RegistryLike, subprocess = fakeSubprocess(), loader?: unknown): Mounted {
 	let registered: Mounted["route"] | undefined;
 	let disposer: (() => void) | undefined;
 	const ctx = {
@@ -115,10 +117,20 @@ function mount(profileRoot: string, registry: RegistryLike, subprocess = fakeSub
 			},
 		},
 		subprocess,
+		loader,
 	} as never;
 	disposer = apply(ctx, { registry: registry as never, profileDir: path.join(profileRoot, "fx") } as never) as () => void;
 	if (!registered || typeof disposer !== "function") throw new Error("route or disposer missing");
 	return { disposer, route: registered };
+}
+
+/** Loader rows matching the fixture's plugin package names (fx-npm / fx-git). */
+function fixtureLoader(disabled: string[] = []): unknown {
+	const rows = [
+		{ options: { id: "fx-npm", name: "fx-npm", disabled: disabled.includes("fx-npm") }, disabled: disabled.includes("fx-npm") },
+		{ options: { id: "fx-git", name: "fx-git", disabled: disabled.includes("fx-git") }, disabled: disabled.includes("fx-git") },
+	];
+	return { entries: () => rows };
 }
 
 describe("host plugin", () => {
@@ -360,4 +372,110 @@ describe("host plugin — uninstall", () => {
 });
 
 // re-exported for the uninstall cases
+describe("host plugin — disable / enable", () => {
+	test("list reports disabled state from loader rows", async () => {
+		const root = await fixtureProfile();
+		try {
+			const { route } = mount(root, fakeRegistry(), fakeSubprocess(), fixtureLoader(["fx-npm"]));
+			const { promise, res } = fakeRes();
+			await route.handler(fakeReq("GET", "/plugins/dsh-plugin-dashboard/api/list"), res);
+			const { body } = await promise;
+			const plugins = (body as { plugins: Array<{ name: string; disabled: boolean }> }).plugins;
+			expect(plugins.find((p) => p.name === "fx-npm")?.disabled).toBe(true);
+			expect(plugins.find((p) => p.name === "fx-git")?.disabled).toBe(false);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("disable plan targets loader rows and apply writes the managed block", async () => {
+		const root = await fixtureProfile();
+		try {
+			const profileDir = path.join(root, "fx");
+			const { route } = mount(root, fakeRegistry(), fakeSubprocess(), fixtureLoader());
+
+			const dryRes = fakeRes();
+			await route.handler(fakeReq("POST", "/plugins/dsh-plugin-dashboard/api/disable", { name: "fx-npm" }), dryRes.res);
+			const dry = await dryRes.promise;
+			expect(dry.status).toBe(200);
+			const plan = (dry.body as { plan: { rows: Array<{ id: string; wouldDisable: boolean }>; wouldChange: boolean } }).plan;
+			expect(plan.rows).toEqual([{ id: "fx-npm", name: "fx-npm", disabled: false, wouldDisable: true }]);
+			expect(plan.wouldChange).toBe(true);
+
+			const applyRes = fakeRes();
+			await route.handler(fakeReq("POST", "/plugins/dsh-plugin-dashboard/api/disable", { name: "fx-npm", apply: true }), applyRes.res);
+			const applied = await applyRes.promise;
+			expect(applied.status).toBe(200);
+			expect((applied.body as { applied: boolean }).applied).toBe(true);
+
+			const patchText = await readFile(path.join(profileDir, "cordis.patch.yml"), "utf8");
+			expect(hasDisableBlock(patchText, "fx-npm")).toBe(true);
+			const files = await readdir(profileDir);
+			expect(files.some((f) => f.includes(".dshbak-"))).toBe(true);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("enable plan finds the managed block and apply removes it", async () => {
+		const root = await fixtureProfile();
+		try {
+			const profileDir = path.join(root, "fx");
+			await writeFile(
+				path.join(profileDir, "cordis.patch.yml"),
+				"# fixture user layer\n# >>> dsh-plugin-dashboard managed: disabled plugin fx-npm\n- id: fx-npm\n  name: fx-npm\n  disabled: true\n# <<< dsh-plugin-dashboard managed\n",
+			);
+			const { route } = mount(root, fakeRegistry(), fakeSubprocess(), fixtureLoader(["fx-npm"]));
+
+			const dryRes = fakeRes();
+			await route.handler(fakeReq("POST", "/plugins/dsh-plugin-dashboard/api/enable", { name: "fx-npm" }), dryRes.res);
+			const dry = await dryRes.promise;
+			expect((dry.body as { plan: { found: boolean; wouldChange: boolean } }).plan).toMatchObject({ found: true, wouldChange: true });
+
+			const applyRes = fakeRes();
+			await route.handler(fakeReq("POST", "/plugins/dsh-plugin-dashboard/api/enable", { name: "fx-npm", apply: true }), applyRes.res);
+			const applied = await applyRes.promise;
+			expect(applied.status).toBe(200);
+			expect((applied.body as { applied: boolean }).applied).toBe(true);
+
+			const patchText = await readFile(path.join(profileDir, "cordis.patch.yml"), "utf8");
+			expect(hasDisableBlock(patchText, "fx-npm")).toBe(false);
+			expect(patchText).toContain("# fixture user layer");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("disable refuses core packages and unknown dependencies", async () => {
+		const root = await fixtureProfile();
+		try {
+			const { route } = mount(root, fakeRegistry(), fakeSubprocess(), fixtureLoader());
+
+			const coreRes = fakeRes();
+			await route.handler(fakeReq("POST", "/plugins/dsh-plugin-dashboard/api/disable", { name: "@deepseek-ai/dsh-base" }), coreRes.res);
+			expect((await coreRes.promise).status).toBe(400);
+
+			const ghostRes = fakeRes();
+			await route.handler(fakeReq("POST", "/plugins/dsh-plugin-dashboard/api/disable", { name: "ghost" }), ghostRes.res);
+			expect((await ghostRes.promise).status).toBe(400);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("enable without a managed block errors in the plan", async () => {
+		const root = await fixtureProfile();
+		try {
+			const { route } = mount(root, fakeRegistry(), fakeSubprocess(), fixtureLoader());
+			const { promise, res } = fakeRes();
+			await route.handler(fakeReq("POST", "/plugins/dsh-plugin-dashboard/api/enable", { name: "fx-npm" }), res);
+			const { status, body } = await promise;
+			expect(status).toBe(200);
+			expect((body as { plan: { error: string } }).plan.error).toContain("未找到");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
 import { readdir } from "node:fs/promises";

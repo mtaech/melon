@@ -5,7 +5,7 @@
  *  2. verify the client bundle has the ModuleLoader factory shape,
  *  3. run the real web profile through the host plugin (network-tolerant).
  */
-import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, rm, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -35,6 +35,7 @@ await writeFile(path.join(prof, "package.json"), JSON.stringify({
 }, null, 2) + "\n");
 await writeFile(path.join(prof, "node_modules", "fx-npm", "package.json"), JSON.stringify({ version: "1.0.0" }));
 await writeFile(path.join(prof, "node_modules", "fx-git", "package.json"), JSON.stringify({ version: "0.1.0" }));
+await writeFile(path.join(prof, "cordis.patch.yml"), "# fixture user layer\n");
 await writeFile(path.join(prof, "pnpm-lock.yaml"), `lockfileVersion: '9.0'
 
 importers:
@@ -101,7 +102,13 @@ const fakeSubprocess = {
 		},
 	}),
 };
-const ctx = { webServer: { register: (r) => { route = r; return () => undefined; } }, subprocess: fakeSubprocess };
+const fixtureLoader = {
+	entries: () => [
+		{ options: { id: "fx-npm", name: "fx-npm" }, disabled: false },
+		{ options: { id: "fx-git", name: "fx-git" }, disabled: false },
+	],
+};
+const ctx = { webServer: { register: (r) => { route = r; return () => undefined; } }, subprocess: fakeSubprocess, loader: fixtureLoader };
 const disposer = apply(ctx, { registry: fakeRegistry(), profileDir: prof });
 check("plugin registers prefix route", route && route.kind === "prefix" && route.path === "/plugins/dsh-plugin-dashboard/api");
 check("plugin returns disposer", typeof disposer === "function");
@@ -136,9 +143,23 @@ check("plugin returns disposer", typeof disposer === "function");
 }
 {
 	const { promise, res } = fakeRes();
-	await route.handler(fakeReq("POST", "/plugins/dsh-plugin-dashboard/api/uninstall", { name: "@deepseek-ai/dsh-base" }), res);
+	await route.handler(fakeReq("POST", "/plugins/dsh-plugin-dashboard/api/disable", { name: "fx-npm" }), res);
+	const { status, body } = await promise;
+	check("disable plan targets loader rows", status === 200 && body.plan.rows?.[0]?.id === "fx-npm" && body.plan.rows[0].wouldDisable && body.plan.wouldChange, JSON.stringify(body));
+}
+{
+	const { promise, res } = fakeRes();
+	await route.handler(fakeReq("POST", "/plugins/dsh-plugin-dashboard/api/disable", { name: "fx-npm", apply: true }), res);
 	const { body } = await promise;
-	check("core uninstall refused", String(body.plan.error).includes("core"), JSON.stringify(body));
+	const patchText = await readFile(path.join(prof, "cordis.patch.yml"), "utf8");
+	check("disable apply writes the managed block", body.applied === true && patchText.includes(">>> dsh-plugin-dashboard managed: disabled plugin fx-npm"), JSON.stringify(body));
+}
+{
+	const { promise, res } = fakeRes();
+	await route.handler(fakeReq("POST", "/plugins/dsh-plugin-dashboard/api/enable", { name: "fx-npm", apply: true }), res);
+	const { body } = await promise;
+	const patchText = await readFile(path.join(prof, "cordis.patch.yml"), "utf8");
+	check("enable apply removes the managed block", body.applied === true && !patchText.includes(">>> dsh-plugin-dashboard managed"), JSON.stringify(body));
 }
 await rm(root, { recursive: true, force: true });
 
@@ -159,7 +180,7 @@ await rm(root, { recursive: true, force: true });
 {
 	console.log("real web profile (network)…");
 	let realRoute;
-	const ctx2 = { webServer: { register: (r) => { realRoute = r; return () => undefined; } }, subprocess: fakeSubprocess };
+	const ctx2 = { webServer: { register: (r) => { realRoute = r; return () => undefined; } }, subprocess: fakeSubprocess, loader: fixtureLoader };
 	apply(ctx2, { profileDir: path.join(os.homedir(), ".dsh", "profiles", "web") });
 	const { promise, res } = fakeRes();
 	await realRoute.handler(fakeReq("GET", "/plugins/dsh-plugin-dashboard/api/list?force=1"), res);

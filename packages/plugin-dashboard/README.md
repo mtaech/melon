@@ -7,6 +7,7 @@ DSH 插件管理面板，**嵌入 dsh Web 设置**：Settings → Plugins 新增
 - **版本清单**：读当前 profile 的 `package.json`（dependencies + `dsh.profile.bundles`）、`node_modules/*/package.json`（已装版本）、`pnpm-lock.yaml`（github 安装解析到的 40 位 commit）。
 - **最新版本**：全部走 dsh 进程自带的 node 运行时（`fetch`，零子进程）——npm 包查询 registry 的 `/<pkg>/latest`（dist-tag `latest`，尊重 `npm_config_registry`）；github 安装（`github:user/repo`）查 GitHub REST API `/tags` + `/commits/HEAD`，取最高 semver tag（无 tag 用 HEAD）；支持 `GITHUB_TOKEN` 环境变量提额；远端 4xx/不可达 → 该条目降级为「未知」并显示原因，不影响其它条目。
 - **升级**：preview 先展示 当前→目标 / 新 specifier / 可复制命令；应用时备份 `package.json`（`.dshbak-*`）、改写 specifier（npm 保 range 风格 `^`/`~`；git 包 pin 到 `#<tag>` 或 `#<commit>`）、经 **`ctx.subprocess`** 跑 dsh 原生命令 `dsh plugin --profile <name> add <pkg>@<版本>`（bounded collect 输出），失败自动回滚。
+- **禁用/启用**：按 loader 树里该插件贡献的行（`options.name` 归属、带文件 id）向 profile 的 `cordis.patch.yml` 追加 `disabled: true` 的 id-targeted 补丁（`patchReload: live` 的 profile 即时热生效，`startup` 重启后生效）——不动 `dsh.profile.bundles`/`dependencies`，包保持安装、`dsh plugin` reconcile 不会复读它；启用则整块移除（写入前备份 `.dshbak-*`）。core 包拒绝禁用。
 - **卸载**：从 `dependencies`（`ctx.subprocess` 跑 `dsh plugin --profile <name> remove <pkg>`）与 `dsh.profile.bundles` 中一并移除；**core 包（`@deepseek-ai/*`、`@deepseek-harness-tui/*`）拒绝卸载**；未知包报错；同样带备份与失败回滚。
 - **stale 与并发**：升级前对当前文件重新计算，counts 与 staged 不一致拒绝；升级/卸载串行执行。
 - **安全护栏**：只操作本 profile 的 package.json；core 卸载被硬拒绝；`pnpm install` 失败恢复原文件。
@@ -58,7 +59,7 @@ dsh --profile <你的 profile> --dump-config | grep dsh-plugin-dashboard
 - **npm 最新版本以 dist-tag `latest` 为基准**；本地 `npm` 配的 registry（如镜像）即查询源。
 - **git 包判定**：以 lock 里解析的 commit 与远端 tag/HEAD commit 比较；安装当时无 tag 的仓库升级会 pin 到新 HEAD。
 - **core 保护**：`@deepseek-ai/*`、`@deepseek-harness-tui/*` 不可卸载（防止拆掉 dsh-base 这类地基）；tab 上也不显示卸载按钮。
-- **运行中应用**：升级/卸载在 dsh 运行中直接执行（改动 profile 的 package.json 与 node_modules），完成后需重启 dsh 加载新版本，UI 会提示。无需先停止 dsh——从 dsh 自己的 UI 里先停止反而会中断待执行的应用流程。
+- **运行中应用**：升级/卸载在 dsh 运行中直接执行（改动 profile 的 package.json 与 node_modules），完成后需重启 dsh 加载新版本，UI 会提示。无需先停止 dsh——从 dsh 自己的 UI 里先停止反而会中断待执行的应用流程。- **禁用与卸载交互**：卸载一个被禁用的插件会顺带清理其禁用块（避免下次启动对已不存在行的警告）；禁用某插件后升级它没问题——若新版 patch 改了行 id，旧禁用块会在启动时对缺失行警告一次，重新禁用即可消除。
 
 ## 开发
 

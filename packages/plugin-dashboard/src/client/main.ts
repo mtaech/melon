@@ -25,7 +25,25 @@ export interface PluginEntryDto {
 	latest: { label: string; targetCommit: string | null; error: string | null } | null;
 	status: "update-available" | "up-to-date" | "not-installed" | "ahead" | "unknown" | "n-a";
 	upgradeable: boolean;
+	disabled: boolean;
 	url?: string | null;
+}
+
+export interface DisablePlanDto {
+	name: string;
+	rows: Array<{ id: string; name: string | null; disabled: boolean; wouldDisable: boolean }>;
+	wouldChange: boolean;
+	effect: "live" | "restart";
+	error?: string;
+}
+
+export interface EnablePlanDto {
+	name: string;
+	rows: Array<{ id: string; name: string | null }>;
+	found: boolean;
+	wouldChange: boolean;
+	effect: "live" | "restart";
+	error?: string;
 }
 
 export interface UpgradePlanDto {
@@ -60,6 +78,8 @@ interface DashboardTabInjected {
 	plan: (name: string) => Promise<UpgradePlanDto>;
 	apply: (name: string, plan: UpgradePlanDto) => Promise<{ applied: boolean; log: string[]; error?: string }>;
 	uninstall: (name: string, apply: boolean) => Promise<{ plan?: UninstallPlanDto; applied: boolean; log: string[]; error?: string }>;
+	disable: (name: string, apply: boolean) => Promise<{ plan?: DisablePlanDto; applied: boolean; log?: string[]; error?: string }>;
+	enable: (name: string, apply: boolean) => Promise<{ plan?: EnablePlanDto; applied: boolean; log?: string[]; error?: string }>;
 }
 
 const S = {
@@ -82,6 +102,7 @@ const S = {
 	btn: { border: "1px solid var(--dsw-alias-border-l2)", borderRadius: "var(--m3-shape-small)", padding: "6px 10px", cursor: "pointer", background: "var(--dsw-alias-button-floating-fill)", color: "var(--dsw-alias-label-primary)", fontSize: 13 },
 	btnPrimary: { background: "var(--dsw-alias-button-primary-fill)", color: "var(--dsw-alias-label-primary-foreground)", borderColor: "transparent" },
 	btnDanger: { background: "var(--dsw-alias-button-floating-fill)", color: "var(--dsw-alias-state-error-primary)", borderColor: "var(--dsw-alias-state-error-secondary)" },
+	btnDisable: { background: "var(--dsw-alias-button-floating-fill)", color: "var(--dsw-alias-state-warn-primary)", borderColor: "var(--dsw-alias-state-warn-tertiary)" },
 	link: { color: "var(--dsw-alias-brand-text)", fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4, marginLeft: "auto" as const },
 	btnDisabled: { opacity: 0.45, cursor: "not-allowed" as const },
 	modalWrap: { position: "fixed" as const, inset: 0, background: "var(--dsw-alias-bg-mask-2)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10 },
@@ -127,25 +148,33 @@ interface CardProps {
 	entry: PluginEntryDto;
 	onUpgrade: (name: string) => void;
 	onUninstall: (name: string) => void;
+	onDisable: (name: string) => void;
+	onEnable: (name: string) => void;
 }
 
-function Card({ entry, onUpgrade, onUninstall }: CardProps): React.ReactElement {
+function Card({ entry, onUpgrade, onUninstall, onDisable, onEnable }: CardProps): React.ReactElement {
 	const badges: React.ReactElement[] = [];
 	if (entry.isCore) badges.push(React.createElement("span", { key: "core", style: S.badge }, "core"));
 	if (entry.mounted) badges.push(React.createElement("span", { key: "mounted", style: S.badge }, "mounted"));
 	const sourceStyle = entry.source === "git" ? S.badgeGit : entry.source === "npm" ? S.badgeNpm : undefined;
 	badges.push(React.createElement("span", { key: "src", style: { ...S.badge, ...sourceStyle } }, entry.source));
 	if (entry.installedCommit) badges.push(React.createElement("span", { key: "commit", style: S.badge, title: entry.installedCommit }, short(entry.installedCommit)));
-	if (entry.upgradeable) badges.push(React.createElement("span", { key: "up", style: { ...S.badge, ...S.badgeUp } }, entry.status === "not-installed" ? "未安装" : "有新版本"));
+	if (entry.disabled) badges.push(React.createElement("span", { key: "off", style: { ...S.badge, ...S.badgeUp } }, "已禁用"));
+	else if (entry.upgradeable) badges.push(React.createElement("span", { key: "up", style: { ...S.badge, ...S.badgeUp } }, entry.status === "not-installed" ? "未安装" : "有新版本"));
 
 	let button: React.ReactElement;
-	if (entry.upgradeable) {
+	if (entry.disabled) {
+		button = React.createElement("button", { style: { ...S.btn, ...S.btnPrimary }, onClick: () => onEnable(entry.name) }, "启用");
+	} else if (entry.upgradeable) {
 		button = React.createElement("button", { style: { ...S.btn, ...S.btnPrimary }, onClick: () => onUpgrade(entry.name) }, "升级");
 	} else if (entry.status === "n-a" || entry.status === "unknown") {
 		button = React.createElement("button", { style: { ...S.btn, ...S.btnDisabled }, disabled: true, title: entry.latest?.error ?? "" }, "n/a");
 	} else {
 		button = React.createElement("button", { style: { ...S.btn, ...S.btnDisabled }, disabled: true }, "已最新");
 	}
+	const toggleBtn = entry.isCore
+		? null
+		: React.createElement("button", { style: entry.disabled ? S.btn : { ...S.btn, ...S.btnDisable }, onClick: () => (entry.disabled ? onEnable(entry.name) : onDisable(entry.name)) }, entry.disabled ? "启用" : "禁用");
 	const uninstallBtn = entry.isCore
 		? null
 		: React.createElement("button", { style: { ...S.btn, ...S.btnDanger }, onClick: () => onUninstall(entry.name) }, "卸载");
@@ -171,6 +200,7 @@ function Card({ entry, onUpgrade, onUninstall }: CardProps): React.ReactElement 
 		React.createElement("div", { style: S.actions },
 		entry.url ? React.createElement("a", { href: entry.url, target: "_blank", rel: "noreferrer", style: S.link, title: entry.url }, "仓库 ↗") : null,
 		button,
+		toggleBtn,
 		uninstallBtn,
 	),
 	);
@@ -179,6 +209,15 @@ function Card({ entry, onUpgrade, onUninstall }: CardProps): React.ReactElement 
 interface ModalState {
 	entry: PluginEntryDto;
 	plan: UpgradePlanDto | null;
+	log: string[];
+	busy: boolean;
+	done: boolean;
+}
+
+interface ToggleModalState {
+	kind: "disable" | "enable";
+	entry: PluginEntryDto;
+	plan: DisablePlanDto | EnablePlanDto | null;
 	log: string[];
 	busy: boolean;
 	done: boolean;
@@ -194,6 +233,7 @@ function DashboardTab(props: TabProps): React.ReactElement {
 	const [modal, setModal] = useState<ModalState>(EMPTY_MODAL);
 	const [open, setOpen] = useState(false);
 	const [uninstallState, setUninstallState] = useState<{ entry: PluginEntryDto; plan: UninstallPlanDto | null; log: string[]; busy: boolean; done: boolean } | null>(null);
+	const [toggleState, setToggleState] = useState<ToggleModalState | null>(null);
 	const [query, setQuery] = useState("");
 
 	const reload = (): void => {
@@ -274,6 +314,38 @@ function DashboardTab(props: TabProps): React.ReactElement {
 		reload();
 	};
 
+	const openToggle = (kind: "disable" | "enable", name: string): void => {
+		const entry = entries.find((e) => e.name === name);
+		if (!entry) return;
+		setToggleState({ kind, entry, plan: null, log: [], busy: true, done: false });
+		const fetchPlan = kind === "disable" ? props.disable(name, false) : props.enable(name, false);
+		fetchPlan.then((out) => {
+			setToggleState((t) => (t ? { ...t, plan: out.plan ?? null, busy: false } : t));
+		}).catch((e: Error) => {
+			const fallback = kind === "disable"
+				? { name, rows: [], wouldChange: false, effect: "restart" as const, error: e.message }
+				: { name, rows: [], found: false, wouldChange: false, effect: "restart" as const, error: e.message };
+			setToggleState((t) => (t ? { ...t, plan: fallback, busy: false } : t));
+		});
+	};
+
+	const doToggle = (): void => {
+		if (!toggleState?.entry) return;
+		const kind = toggleState.kind;
+		setToggleState((t) => (t ? { ...t, busy: true } : t));
+		const run = kind === "disable" ? props.disable(toggleState.entry.name, true) : props.enable(toggleState.entry.name, true);
+		run.then((out) => {
+			setToggleState((t) => (t ? { ...t, busy: false, done: out.applied, log: out.log ?? [] } : t));
+		}).catch((e: Error) => {
+			setToggleState((t) => (t ? { ...t, busy: false, log: [...t.log, `失败：${e.message}`] } : t));
+		});
+	};
+
+	const closeToggle = (): void => {
+		setToggleState(null);
+		reload();
+	};
+
 	return React.createElement(
 		"div",
 		null,
@@ -294,9 +366,48 @@ function DashboardTab(props: TabProps): React.ReactElement {
 				? React.createElement("div", { style: S.empty }, `加载失败：${error}`)
 				: visible.length === 0
 					? React.createElement("div", { style: S.empty }, q ? "无匹配插件" : "无插件")
-					: React.createElement("div", null, visible.map((e) => React.createElement(Card, { key: e.name, entry: e, onUpgrade: openUpgrade, onUninstall: openUninstall }))),
+					: React.createElement("div", null, visible.map((e) => React.createElement(Card, { key: e.name, entry: e, onUpgrade: openUpgrade, onUninstall: openUninstall, onDisable: (n: string) => openToggle("disable", n), onEnable: (n: string) => openToggle("enable", n) }))),
 		open ? React.createElement(UpgradeModal, { modal, onClose: close, onApply: doApply }) : null,
 		uninstallState ? React.createElement(UninstallModal, { state: uninstallState, onClose: closeUninstall, onApply: doUninstall }) : null,
+		toggleState ? React.createElement(ToggleModal, { state: toggleState, onClose: closeToggle, onApply: doToggle }) : null,
+	);
+}
+
+function ToggleModal({ state, onClose, onApply }: { state: ToggleModalState; onClose: () => void; onApply: () => void }): React.ReactElement {
+	const isDisable = state.kind === "disable";
+	const plan = state.plan;
+	const rows: Array<[string, React.ReactNode]> = [];
+	if (plan) {
+		if (isDisable) {
+			const d = plan as DisablePlanDto;
+			rows.push(["作用", "向 profile 的 cordis.patch.yml 写入 loader 行 disabled: true"]);
+			rows.push(["将禁用的行", d.rows.filter((r) => r.wouldDisable).map((r) => r.id).join(", ") || "—"]);
+		} else {
+			const e = plan as EnablePlanDto;
+			rows.push(["恢复的行", e.rows.map((r) => r.id).join(", ") || "（移除禁用块）"]);
+		}
+		rows.push(["生效方式", plan.effect === "live" ? "立即生效（profile 热重载）" : "重启 dsh 后生效"]);
+		if (plan.error) rows.push(["错误", plan.error]);
+	}
+	const canApply = plan != null && !plan.error && !state.busy && !state.done;
+	return React.createElement("div", { style: S.modalWrap, onClick: onClose },
+		React.createElement("div", { style: S.modal, onClick: (e: React.MouseEvent) => e.stopPropagation() },
+			React.createElement("div", { style: S.modalHead }, `${isDisable ? "禁用" : "启用"} ${state.entry.name}`),
+			React.createElement("div", { style: S.modalBody },
+				React.createElement("dl", { style: S.plan },
+					...rows.flatMap(([k, v]) => [
+						React.createElement("dt", { key: k + "-k", style: S.planDt }, k),
+						React.createElement("dd", { key: k + "-v", style: S.planDd }, v),
+					]),
+				),
+				state.log.length > 0 ? React.createElement("pre", { style: S.log }, state.log.join("\n")) : null,
+			),
+			React.createElement("div", { style: S.modalFoot },
+				React.createElement("button", { style: S.btn, onClick: onClose }, state.done ? "关闭" : "取消"),
+				React.createElement("button", { style: { ...S.btn, ...(isDisable ? S.btnDisable : S.btnPrimary), ...(canApply ? {} : S.btnDisabled) }, disabled: !canApply, onClick: onApply, title: canApply ? "" : plan?.error ?? "" },
+					state.busy ? "写入 cordis.patch.yml…" : state.done ? (isDisable ? "已禁用 ✓" : "已启用 ✓") : isDisable ? "确认禁用" : "确认启用"),
+			),
+		),
 	);
 }
 
@@ -367,7 +478,19 @@ export function apply(ctx: ClientContext): void {
 		if (!res.ok) throw new Error(body.error ?? `uninstall failed (${res.status})`);
 		return body;
 	};
-	const injected = (): DashboardTabInjected => ({ list, plan, apply, uninstall });
+	const disable = async (name: string, applyNow: boolean): Promise<{ plan?: DisablePlanDto; applied: boolean; log?: string[]; error?: string }> => {
+		const res = await fetch(`${api}/disable`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name, apply: applyNow }) });
+		const body = (await res.json()) as { plan?: DisablePlanDto; applied: boolean; log?: string[]; error?: string } & { error?: string };
+		if (!res.ok) throw new Error(body.error ?? `disable failed (${res.status})`);
+		return body;
+	};
+	const enable = async (name: string, applyNow: boolean): Promise<{ plan?: EnablePlanDto; applied: boolean; log?: string[]; error?: string }> => {
+		const res = await fetch(`${api}/enable`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name, apply: applyNow }) });
+		const body = (await res.json()) as { plan?: EnablePlanDto; applied: boolean; log?: string[]; error?: string } & { error?: string };
+		if (!res.ok) throw new Error(body.error ?? `enable failed (${res.status})`);
+		return body;
+	};
+	const injected = (): DashboardTabInjected => ({ list, plan, apply, uninstall, disable, enable });
 
 	if (!ctx.slots) return;
 	ctx.slots.inject("settings.plugins.tab", () =>
