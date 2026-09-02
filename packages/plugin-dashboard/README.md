@@ -13,7 +13,7 @@ DSH 插件管理面板，**嵌入 dsh Web 设置**：Settings → Plugins 新增
 
 ## 安装
 
-作为 profile bundle 挂载。**先停掉正在运行的 dsh，再装**——运行期间改 profile 的 `node_modules` 会让进程读到残缺的依赖树。
+作为 profile bundle 挂载。`dsh plugin add` 只是在 profile 目录跑 pnpm——运行中直接执行即可，无需先停止 dsh；装完重启 dsh 生效。
 
 ```bash
 cd ~/.dsh/profiles/<你的 profile>          # 例如 web
@@ -58,7 +58,7 @@ dsh --profile <你的 profile> --dump-config | grep dsh-plugin-dashboard
 - **npm 最新版本以 dist-tag `latest` 为基准**；本地 `npm` 配的 registry（如镜像）即查询源。
 - **git 包判定**：以 lock 里解析的 commit 与远端 tag/HEAD commit 比较；安装当时无 tag 的仓库升级会 pin 到新 HEAD。
 - **core 保护**：`@deepseek-ai/*`、`@deepseek-harness-tui/*` 不可卸载（防止拆掉 dsh-base 这类地基）；tab 上也不显示卸载按钮。
-- **爆发面**：卸载/升级执行期间 dsh 若继续运行，node_modules 会短暂不一致——UI 顶部有运行警告条，仍建议先停 dsh。
+- **运行中应用**：升级/卸载在 dsh 运行中直接执行（改动 profile 的 package.json 与 node_modules），完成后需重启 dsh 加载新版本，UI 会提示。无需先停止 dsh——从 dsh 自己的 UI 里先停止反而会中断待执行的应用流程。
 
 ## 开发
 

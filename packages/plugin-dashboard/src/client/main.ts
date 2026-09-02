@@ -277,7 +277,7 @@ function DashboardTab(props: TabProps): React.ReactElement {
 	return React.createElement(
 		"div",
 		null,
-		dshRunning ? React.createElement("div", { style: S.banner }, "⚠ dsh 正在运行：升级会改动 profile 的 node_modules，请先停止 dsh 再应用升级。") : null,
+		dshRunning ? React.createElement("div", { style: S.banner }, "dsh 正在运行：升级/卸载会直接应用到 profile（改写 package.json 并执行 pnpm），无需先停止 dsh；操作完成后请重启 dsh 使变更生效。") : null,
 		React.createElement(
 			"div",
 			{ style: S.header },
