@@ -116,6 +116,9 @@ export async function acquireBrowser(kind: BrowserKind, opts: AcquireBrowserOpti
 	pendingOpens.set(key, promise);
 	try {
 		const handle = await promise;
+		// Register the live handle so later acquisitions reuse it and reference
+		// counting (releaseBrowser -> disposeBrowser) can actually reach zero.
+		browsers.set(key, handle);
 		handle.refCount++;
 		return handle;
 	} finally {

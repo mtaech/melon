@@ -13,10 +13,11 @@ import { ToolError } from "./errors.js";
 import { resolveConfig, type BrowserToolConfig, type BrowserToolConfigInput } from "./config.js";
 import { defineTool, type Context, type ContentBlock, type ImageAttachmentRef, type ToolRunContext } from "./deps.js";
 import { acquireBrowser, releaseBrowser, type ResolvedBrowserConfig } from "./browsers/registry.js";
-import { acquireTab, getTab, releaseTab, runInTab, expandBrowserScreenshotDir } from "./browsers/tab-supervisor.js";
+import { acquireTab, getTab, releaseTab, runInTab, releaseAllTabs, releaseTabsForOwner, expandBrowserScreenshotDir } from "./browsers/tab-supervisor.js";
 import { resolveRelayKind } from "./relay/kind.js";
 import type { ImageContent, RunResultOk, TextContent } from "./browsers/types.js";
 import type { JsonValue } from "@deepseek-ai/dsh-util-values";
+import { logger } from "./util.js";
 
 export interface BrowserToolOptions {
 	/** Allow spawning/attaching a browser. False disables the tool. */
@@ -140,7 +141,7 @@ interface ToolServices {
 	};
 }
 
-export function apply(ctx: Context, options: BrowserToolOptions = {}): void {
+export function apply(ctx: Context, options: BrowserToolOptions = {}): (() => void) | void {
 	if (options.enabled === false) return;
 	const settings = resolveConfig(options.config ?? {});
 	if (!settings.enabled) return;
@@ -218,6 +219,29 @@ export function apply(ctx: Context, options: BrowserToolOptions = {}): void {
 			},
 		}),
 	);
+
+	// Auto-close owned browsers. The `close` action releases a tab's reference;
+	// here we also release a whole session's tabs when that session is disposed
+	// (conversation deleted/evicted) and everything on plugin unload, so owned
+	// headless/spawned Chromium processes are not left running.
+	ctx.on("session/disposed", (session: { id?: string }) => {
+		const ownerId = session?.id;
+		if (!ownerId) return;
+		void releaseTabsForOwner(ownerId).catch((error) => {
+			logger.warn("Failed to release tabs for disposed session", {
+				sessionId: ownerId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
+	});
+
+	return () => {
+		void releaseAllTabs().catch((error) => {
+			logger.warn("Failed to release all browser tabs on plugin unload", {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
+	};
 }
 
 async function actionOpen(
@@ -254,6 +278,10 @@ async function actionOpen(
 			signal: exec.signal,
 			ownerSessionId,
 		});
+		// The tab now owns its own reference; drop the transient hold taken by
+		// acquireBrowser so closing the tab can bring the refcount to zero and
+		// actually dispose the (owned) browser.
+		await releaseBrowser(browser, { kill: false }).catch(() => undefined);
 		const url = tab.info?.url ?? args.url;
 		return {
 			ok: true,

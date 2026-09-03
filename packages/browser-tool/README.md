@@ -15,6 +15,8 @@ DSH（DeepSeek Harness）浏览器工具包：在 Agent 会话中驱动 Chromium
   - `read/write/env/tree/tool/agent/parallel/pipeline/phase/log/budget` 等 omp 专属 helper 明确报错；
   - op 级超时低于 cell 预算（`OP_DEADLINE_SLACK_MS=1000`），超时走 tab worker recycle 或强制回收。
 - **close** — 关闭标签页，可 `kill` 一并结束自己拥有的浏览器。
+  - 自己拥有（headless/spawned）的浏览器在最后一个标签页关闭后自动回收进程；connected/relay 只 disconnect 不关闭。
+  - 会话被销毁（`session/disposed`）时释放该会话创建的标签页，插件卸载时释放全部标签页。
 - **relay CLI**（`dsh-browser-relay`）：`serve`（HTTP+WS，伪装 Chrome CDP discovery `/json/version`、`/json/list`、`/cdp`）、`install`（把扩展装入 `~/.dsh/browser-relay/extension`）、`status`。扩展资产提交在 `src/assets/relay/extension-assets`。
 
 ## 结构

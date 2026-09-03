@@ -3,7 +3,7 @@
  * through the tab worker, and tear everything down. Run with `npm run smoke`
  * after a build (loads `lib/`, so it exercises the compiled artifact).
  */
-import { acquireBrowser, releaseBrowser } from "../lib/browsers/registry.js";
+import { acquireBrowser, releaseBrowser, getBrowsersMapForTest } from "../lib/browsers/registry.js";
 import { acquireTab, releaseTab, runInTab } from "../lib/browsers/tab-supervisor.js";
 
 const SKIP = process.env.DSH_BROWSER_SKIP_SMOKE === "1";
@@ -50,6 +50,9 @@ if (SKIP) {
 				signal: ac.signal,
 			});
 			console.log(`[smoke] tab acquired (created=${created}, worker=${tab.workerMode ?? "?"})`);
+			// actionOpen drops its transient acquireBrowser hold once the tab owns a ref;
+			// mirror that so closing the tab below can dispose the browser.
+			await releaseBrowser(browser, { kill: false });
 
 			const result = await runInTab("smoke-tab", {
 				code: [
@@ -87,9 +90,14 @@ if (SKIP) {
 			}
 
 			await releaseTab("smoke-tab", {});
-			console.log("[smoke] tab released");
+			if (browser.refCount !== 0 || getBrowsersMapForTest().size !== 0) {
+				fail(`owned browser not disposed after close (refCount=${browser.refCount}, browsers=${getBrowsersMapForTest().size})`);
+			} else {
+				console.log("[smoke] OK: closing the last tab disposed the owned browser");
+			}
 		} finally {
-			await releaseBrowser(browser, { kill: true, timeoutMs: 20_000 });
+			// Tolerate an already-disposed handle (close reached refCount 0 above).
+			await releaseBrowser(browser, { kill: true, timeoutMs: 20_000 }).catch(() => undefined);
 			console.log("[smoke] browser released");
 		}
 	}
