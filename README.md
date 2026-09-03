@@ -8,10 +8,11 @@
 |---|---|
 | [`dsh-ast-edit-tool`](packages/ast-edit-tool) | agent 工具：基于 ast-grep 的结构化改写，`$NAME` / `$$$ARGS` 元变量，预览-确认两段式 |
 | [`dsh-browser-tool`](packages/browser-tool) | agent 工具：驱动 Chromium（headless / CDP 接管 / 本机真实 Chrome via Relay），open-close-run 标签页脚本 API |
+| [`dsh-model-select-plus`](packages/model-select-plus) | Web 插件：composer 模型选择弹窗增强——按 provider 分组、推理等级一键切换、搜索过滤、收藏置顶、分组折叠与 Tag 导航，触发按钮显示 供应商/模型 |
 | [`dsh-plugin-dashboard`](packages/plugin-dashboard) | Web 设置页：列出 profile 已装第三方插件的当前/最新版本，一键升级与卸载 |
 | [`dsh-skin-material-you`](packages/skin-material-you) | 皮肤：Material 3 HCT 色调色板 + Maple Mono NF CN 排印 |
 
-四个包各自独立发版到 npm，安装方式统一：
+五个包各自独立发版到 npm，安装方式统一：
 
 ```bash
 dsh plugin --profile <你的 profile> add <包名>
