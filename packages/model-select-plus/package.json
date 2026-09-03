@@ -1,6 +1,6 @@
 {
 	"name": "dsh-model-select-plus",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"description": "A richer model-selection popup for DeepSeek Harness: provider-grouped models with descriptions, inline reasoning-effort chips, search and pinned favorites — replaces the composer's default ModelSelect.",
 	"type": "module",
 	"main": "lib/host.js",

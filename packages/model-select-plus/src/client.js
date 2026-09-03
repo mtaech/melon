@@ -29,6 +29,7 @@ export const inject = ["slots"];
 
 const API = "/plugins/dsh-model-select-plus/api";
 const STYLE_TAG = "dsh-model-select-plus/style";
+const FAVS_KEY = "__favorites__";
 
 const CSS = `
   .mdsl-root { position: relative; }
@@ -57,12 +58,25 @@ const CSS = `
   .mdsl-search:focus { border-color: var(--dsw-alias-brand-primary); box-shadow: 0 0 0 3px var(--dsw-alias-interactive-bg-active); }
   .mdsl-search-clear { position: absolute; right: 7px; border: none; background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-secondary); border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-family: inherit; font-size: 12px; line-height: 1; }
   .mdsl-search-clear:hover { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
-  .mdsl-body { overflow-y: auto; padding: 5px; scrollbar-width: thin; scrollbar-color: var(--dsw-alias-scrollbar-bg-l1) transparent; }
+  .mdsl-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 8px; }
+  .mdsl-tag { flex: none; display: inline-flex; align-items: center; gap: 4px; font-family: inherit; font-size: 11px; line-height: 1.3; border: 1px solid var(--dsw-alias-border-l1); background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-secondary); border-radius: 999px; padding: 2px 8px; cursor: pointer; user-select: none; transition: border-color .12s, color .12s, background .12s; }
+  .mdsl-tag:hover { border-color: var(--dsw-alias-border-l2); color: var(--dsw-alias-label-primary); background: var(--dsw-alias-interactive-bg-hover); }
+  .mdsl-tag:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--dsw-alias-brand-primary); }
+  .mdsl-tag-current { border-color: var(--dsw-alias-brand-primary); color: var(--dsw-alias-brand-primary); background: var(--dsw-alias-interactive-bg-active); font-weight: 550; }
+  .mdsl-tag-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--dsw-alias-brand-primary); flex: none; }
+  .mdsl-tag-count { color: var(--dsw-alias-label-tertiary); font-weight: 500; }
+  .mdsl-body { flex: 1; min-height: 0; overflow-y: auto; padding: 5px; scrollbar-width: thin; scrollbar-color: var(--dsw-alias-scrollbar-bg-l1) transparent; }
   .mdsl-body::-webkit-scrollbar { width: 7px; }
   .mdsl-body::-webkit-scrollbar-thumb { background: var(--dsw-alias-scrollbar-bg-l1); border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
   .mdsl-body::-webkit-scrollbar-thumb:hover { background: var(--dsw-alias-scrollbar-hover-l1); }
   .mdsl-group { display: flex; flex-direction: column; gap: 3px; margin-bottom: 4px; }
-  .mdsl-group-title { font-size: 10px; font-weight: 600; color: var(--dsw-alias-label-tertiary); letter-spacing: .06em; padding: 7px 8px 2px; text-transform: uppercase; }
+  .mdsl-group-collapsed { gap: 0; margin-bottom: 2px; }
+  .mdsl-group-title { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 600; color: var(--dsw-alias-label-tertiary); letter-spacing: .06em; text-transform: uppercase; padding: 5px 6px 3px; margin: 2px 2px 0; border-radius: 6px; cursor: pointer; user-select: none; transition: background .12s ease, color .12s ease; }
+  .mdsl-group-title:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-secondary); }
+  .mdsl-group-title:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--dsw-alias-brand-primary); }
+  .mdsl-group-chevron { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 10px; height: 10px; color: currentColor; transform: rotate(90deg); transition: transform .14s ease; }
+  .mdsl-group-collapsed .mdsl-group-chevron { transform: none; }
+  .mdsl-group-count { margin-left: auto; font-weight: 500; letter-spacing: 0; opacity: .85; }
   .mdsl-row { display: flex; align-items: flex-start; gap: 6px; padding: 6px 8px; border-radius: 10px; cursor: pointer; transition: background .12s ease; }
   .mdsl-row:hover { background: var(--dsw-alias-interactive-bg-hover); }
   .mdsl-row-current, .mdsl-row-current:hover { background: var(--dsw-alias-interactive-bg-active); }
@@ -100,6 +114,12 @@ const star = (filled) => React.createElement(
   React.createElement("path", { d: "M12 2.6l2.86 5.8 6.4.94-4.63 4.5 1.1 6.37L12 17.02 6.27 20.2l1.1-6.37-4.63-4.5 6.4-.94L12 2.6z", stroke: "currentColor", strokeWidth: 1.5, strokeLinejoin: "round" }),
 );
 
+const chevron = () => React.createElement(
+  "svg",
+  { width: 9, height: 9, viewBox: "0 0 8 8", fill: "none", xmlns: "http://www.w3.org/2000/svg" },
+  React.createElement("path", { d: "M2.2 1.6L5.4 4 2.2 6.4", stroke: "currentColor", strokeWidth: 1.3, strokeLinecap: "round", strokeLinejoin: "round" }),
+);
+
 const searchIcon = () => React.createElement(
   "span",
   { className: "mdsl-search-icon" },
@@ -114,11 +134,16 @@ const searchIcon = () => React.createElement(
 function ModelSelectLite(props) {
   const sessionId = props.sessionId;
   const locked = props.locked === true;
+  const bodyRef = React.useRef(null);
   const [open, setOpen] = React.useState(false);
   const [data, setData] = React.useState({ status: "idle", groups: [], failures: [], current: null, error: null });
   const [query, setQuery] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [, bump] = React.useState(0);
+  // Manual overrides for group fold state (id -> boolean). By default, only
+  // the group containing the currently selected model is expanded; all other
+  // groups default to collapsed. Searching force-expands every group.
+  const [userToggled, setUserToggled] = React.useState(() => new Map());
 
   const load = () => {
     setData((d) => ({ ...d, status: "loading", error: null }));
@@ -139,7 +164,12 @@ function ModelSelectLite(props) {
 
   // Load on mount (and when the session changes) so the trigger shows the
   // current model immediately instead of the "选择模型" placeholder.
-  React.useEffect(() => { if (sessionId !== undefined) load(); }, [sessionId]);
+  React.useEffect(() => {
+    if (sessionId !== undefined) {
+      setUserToggled(new Map());
+      load();
+    }
+  }, [sessionId]);
 
   const openMenu = () => { setOpen(true); load(); };
   const closeMenu = () => { setOpen(false); setQuery(""); };
@@ -162,6 +192,7 @@ function ModelSelectLite(props) {
         setBusy(false);
         if (res && res.ok === true) {
           setData((d) => ({ ...d, current: res.selected, error: null }));
+          setUserToggled(new Map());
           closeMenu();
         } else {
           setData((d) => ({ ...d, error: (res && res.message) || "选择失败" }));
@@ -182,10 +213,56 @@ function ModelSelectLite(props) {
     bump((x) => x + 1);
   };
 
+  const isGroupCollapsed = (gid) => {
+    if (query.trim() !== "") return false;
+    if (userToggled.has(gid)) return userToggled.get(gid);
+    const cur = data.current;
+    const isCurrentGroup = gid === FAVS_KEY
+      ? (cur !== null && favorites.has(cur.provider + "/" + cur.model))
+      : (cur !== null && cur.provider === gid);
+    return !isCurrentGroup;
+  };
+
+  const toggleCollapse = (gid) => {
+    const nextState = !isGroupCollapsed(gid);
+    setUserToggled((prev) => {
+      const next = new Map(prev);
+      next.set(gid, nextState);
+      return next;
+    });
+  };
+
+  const scrollToGroup = (gid) => {
+    if (query !== "") setQuery("");
+    setUserToggled((prev) => {
+      // 点击 Tag：只展开目标组，收藏组与其余模型组全部折叠
+      const next = new Map();
+      if (data.groups) {
+        for (const g of data.groups) next.set(g.id, true);
+      }
+      next.set(FAVS_KEY, true);
+      next.set(gid, false);
+      return next;
+    });
+    setTimeout(() => {
+      if (!bodyRef.current) return;
+      const el = bodyRef.current.querySelector('[data-group-id="' + gid + '"]');
+      if (el) {
+        const bodyRect = bodyRef.current.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        const targetScrollTop = bodyRef.current.scrollTop + (elRect.top - bodyRect.top);
+        bodyRef.current.scrollTo({ top: Math.max(0, targetScrollTop - 4), behavior: "smooth" });
+      }
+    }, 40);
+  };
+
   const current = data.current;
   const curGroup = current ? data.groups.find((g) => g.id === current.provider) : undefined;
   const curModel = curGroup ? curGroup.models.find((mm) => mm.id === current.model) : undefined;
+  // trigger 按钮显示“供应商/模型”，供应商取组的显示名，找不到组时回退 provider id。
+  const providerName = curGroup ? curGroup.name : (current ? current.provider : "");
   const modelName = (curModel && curModel.name) || (current ? current.model : "选择模型");
+  const triggerLabel = current ? (providerName + "/" + modelName) : "选择模型";
   const effEffort = current
     ? (current.reasoningEffort !== undefined ? current.reasoningEffort : (curModel && curModel.reasoning ? curModel.reasoning.defaultEffort : undefined))
     : undefined;
@@ -205,6 +282,39 @@ function ModelSelectLite(props) {
   const filtered = q === "" ? allChoices : allChoices.filter((c) => (c.m.name + " " + (c.m.description || "") + " " + c.g.name).toLowerCase().includes(q));
   const favs = filtered.filter((c) => favorites.has(`${c.g.id}/${c.m.id}`));
   const nonFavs = filtered.filter((c) => !favorites.has(`${c.g.id}/${c.m.id}`));
+  const favsCollapsed = isGroupCollapsed(FAVS_KEY);
+
+  const tagList = [];
+  if (favorites.size > 0) {
+    const isCurrent = current !== null && favorites.has(current.provider + "/" + current.model);
+    tagList.push({ id: FAVS_KEY, name: "★ 收藏", isCurrent, count: favorites.size });
+  }
+  if (data.groups) {
+    for (const g of data.groups) {
+      if (g.models && g.models.length > 0) {
+        const isCurrent = current !== null && current.provider === g.id;
+        tagList.push({ id: g.id, name: g.name, isCurrent, count: g.models.length });
+      }
+    }
+  }
+
+  // Group header doubles as a collapse toggle (Enter/Space work too); while
+  // searching it is inert and every group renders expanded.
+  const groupTitle = (gid, name, count, isCollapsed, interactive) => React.createElement(
+    "div",
+    {
+      className: "mdsl-group-title",
+      role: "button",
+      tabIndex: 0,
+      "aria-expanded": isCollapsed ? false : true,
+      title: (isCollapsed ? "展开：" : "折叠：") + name,
+      onClick: interactive ? () => toggleCollapse(gid) : undefined,
+      onKeyDown: interactive ? (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggleCollapse(gid); } } : undefined,
+    },
+    React.createElement("span", { className: "mdsl-group-chevron" }, chevron()),
+    React.createElement("span", null, name),
+    React.createElement("span", { className: "mdsl-group-count" }, count),
+  );
 
   const renderRow = (c) => {
     const hasEfforts = c.m.reasoning && c.m.reasoning.efforts && c.m.reasoning.efforts.length;
@@ -237,9 +347,14 @@ function ModelSelectLite(props) {
   const renderGroup = (g) => {
     const items = nonFavs.filter((c) => c.g.id === g.id);
     if (items.length === 0) return null;
-    return React.createElement("div", { className: "mdsl-group", key: g.id },
-      React.createElement("div", { className: "mdsl-group-title" }, g.name),
-      items.map(renderRow),
+    const isCollapsed = isGroupCollapsed(g.id);
+    return React.createElement("div", {
+      className: "mdsl-group" + (isCollapsed ? " mdsl-group-collapsed" : ""),
+      key: g.id,
+      "data-group-id": g.id,
+    },
+      groupTitle(g.id, g.name, items.length, isCollapsed, q === ""),
+      isCollapsed ? null : items.map(renderRow),
     );
   };
 
@@ -248,9 +363,9 @@ function ModelSelectLite(props) {
       className: "mdsl-trigger",
       onClick: () => { if (open) closeMenu(); else openMenu(); },
       disabled: locked,
-      title: modelName + (effLabel ? " · " + effLabel : ""),
+      title: triggerLabel + (effLabel ? " · " + effLabel : ""),
     },
-      React.createElement("span", { className: "mdsl-label" }, modelName),
+      React.createElement("span", { className: "mdsl-label" }, triggerLabel),
       effLabel ? [React.createElement("span", { className: "mdsl-sep" }, "·"), React.createElement("span", { className: "mdsl-effort" }, effLabel)] : null,
       React.createElement("span", { className: "mdsl-chevron" + (open ? " mdsl-chevron-open" : "") }, "▾"),
     ),
@@ -268,15 +383,32 @@ function ModelSelectLite(props) {
           React.createElement("input", { className: "mdsl-search", placeholder: "搜索模型 / 描述 / 提供商…", value: query, onChange: (ev) => setQuery(ev.target.value), onKeyDown: (ev) => { if (ev.key === "Escape") closeMenu(); } }),
           query !== "" ? React.createElement("button", { className: "mdsl-search-clear", onClick: () => setQuery("") }, "×") : null,
         ),
+        tagList.length > 0 ? React.createElement("div", { className: "mdsl-tags" },
+          tagList.map((tag) => React.createElement("button", {
+            key: tag.id,
+            type: "button",
+            className: "mdsl-tag" + (tag.isCurrent ? " mdsl-tag-current" : ""),
+            title: "跳转至 " + tag.name,
+            onClick: () => scrollToGroup(tag.id),
+          },
+            tag.isCurrent ? React.createElement("span", { className: "mdsl-tag-dot" }) : null,
+            React.createElement("span", null, tag.name),
+            React.createElement("span", { className: "mdsl-tag-count" }, "(" + tag.count + ")"),
+          )),
+        ) : null,
       ),
       data.status === "error" ? React.createElement("div", { className: "mdsl-error" }, data.error || "加载失败") : null,
       data.failures && data.failures.length ? React.createElement("div", { className: "mdsl-error" }, data.failures.map((f) => f.name + ": " + f.message).join("；")) : null,
-      React.createElement("div", { className: "mdsl-body" },
+      React.createElement("div", { className: "mdsl-body", ref: bodyRef },
         data.status === "loading" ? React.createElement("div", { className: "mdsl-empty" }, "加载中…") : null,
         data.status === "ready" && allChoices.length === 0 ? React.createElement("div", { className: "mdsl-empty" }, "暂无可用模型") : null,
-        favs.length ? React.createElement("div", { className: "mdsl-group" },
-          React.createElement("div", { className: "mdsl-group-title" }, "收藏"),
-          favs.map(renderRow),
+        favs.length ? React.createElement("div", {
+          className: "mdsl-group" + (favsCollapsed ? " mdsl-group-collapsed" : ""),
+          key: FAVS_KEY,
+          "data-group-id": FAVS_KEY,
+        },
+          groupTitle(FAVS_KEY, "收藏", favs.length, favsCollapsed, q === ""),
+          favsCollapsed ? null : favs.map(renderRow),
         ) : null,
         (data.groups || []).map(renderGroup),
       ),
