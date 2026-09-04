@@ -89,11 +89,16 @@ if (SKIP) {
 				fail(`unexpected observe result ${JSON.stringify(obs.returnValue)}`);
 			}
 
-			await releaseTab("smoke-tab", {});
+			const released = await releaseTab("smoke-tab", {});
 			if (browser.refCount !== 0 || getBrowsersMapForTest().size !== 0) {
 				fail(`owned browser not disposed after close (refCount=${browser.refCount}, browsers=${getBrowsersMapForTest().size})`);
 			} else {
 				console.log("[smoke] OK: closing the last tab disposed the owned browser");
+			}
+			if (!(released && released.closed === true && released.kindTag === "headless" && released.browserAlive === false)) {
+				fail(`unexpected releaseTab result ${JSON.stringify(released)}`);
+			} else {
+				console.log("[smoke] OK: releaseTab reports closed=true kindTag=headless browserAlive=false");
 			}
 		} finally {
 			// Tolerate an already-disposed handle (close reached refCount 0 above).

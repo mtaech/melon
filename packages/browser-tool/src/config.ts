@@ -13,6 +13,7 @@ export const browserToolConfigSchema = z.object({
 	screenshotDir: z.string().default(""),
 	noWebP: z.boolean().default(false),
 	installChrome: z.boolean().default(true),
+	remindAgent: z.boolean().default(true),
 });
 
 export type BrowserToolConfig = ReturnType<typeof browserToolConfigSchema>;
@@ -27,6 +28,7 @@ export interface BrowserToolConfigInput {
 	screenshotDir?: string;
 	noWebP?: boolean;
 	installChrome?: boolean;
+	remindAgent?: boolean;
 }
 
 /** Merge environment overrides onto the config block. */
@@ -40,6 +42,7 @@ export function resolveConfig(input: Partial<BrowserToolConfigInput>): BrowserTo
 		screenshotDir: expandHome(process.env.DSH_BROWSER_SCREENSHOT_DIR || input.screenshotDir || ""),
 		noWebP: envFlag("DSH_BROWSER_NO_WEBP", input.noWebP ?? false),
 		installChrome: envFlag("DSH_BROWSER_INSTALL_CHROME", input.installChrome ?? true),
+		remindAgent: envFlag("DSH_BROWSER_REMIND_AGENT", input.remindAgent ?? true),
 	};
 }
 

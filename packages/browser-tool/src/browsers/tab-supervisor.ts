@@ -13,6 +13,7 @@ import {
 	type BrowserHandle,
 	type BrowserKindTag,
 	holdBrowser,
+	isBrowserAlive,
 	type PuppeteerBrowserHandle,
 	releaseBrowser,
 } from "./registry.js";
@@ -90,6 +91,15 @@ export interface RunInTabOptions {
 export interface ReleaseTabOptions {
 	kill?: boolean;
 	timeoutMs?: number;
+}
+
+export interface ReleaseTabResult {
+	/** True when a tab existed and was released; false for an unknown name. */
+	closed: boolean;
+	/** Kind tag of the released tab's browser ("" when no tab was found). */
+	kindTag: BrowserKindTag | "";
+	/** True when the tab's browser is still registered/alive after release. */
+	browserAlive: boolean;
 }
 
 /** Browser-config surface consumed by the supervisor (see config.ts). */
@@ -338,12 +348,14 @@ async function runInTabWithSnapshot(
 	}
 }
 
-export async function releaseTab(name: string, opts: ReleaseTabOptions = {}): Promise<boolean> {
+export async function releaseTab(name: string, opts: ReleaseTabOptions = {}): Promise<ReleaseTabResult> {
 	const tab = tabs.get(name);
 	if (!tab) {
 		logger.debug("releaseTab: unknown tab", { name });
-		return false;
+		return { closed: false, kindTag: "", browserAlive: false };
 	}
+	const kindTag = tab.kindTag;
+	const browserKey = tab.browser.key;
 	const wasAlive = tab.state === "alive";
 	tab.state = "dead";
 	const closeError = new ToolError(`Tab ${JSON.stringify(name)} was closed`);
@@ -385,14 +397,15 @@ export async function releaseTab(name: string, opts: ReleaseTabOptions = {}): Pr
 		tabs.delete(name);
 	}
 	if (cleanupError) throw cleanupError;
-	return true;
+	const browserAlive = isBrowserAlive(browserKey);
+	return { closed: true, kindTag, browserAlive };
 }
 
 export async function releaseAllTabs(opts: ReleaseTabOptions = {}): Promise<number> {
 	const names = [...tabs.keys()];
 	let count = 0;
 	for (const name of names) {
-		if (await releaseTab(name, opts)) count++;
+		if ((await releaseTab(name, opts)).closed) count++;
 	}
 	return count;
 }
@@ -408,9 +421,17 @@ export async function releaseTabsForOwner(ownerId: string, opts: ReleaseTabOptio
 	const names = [...tabs.values()].filter(tab => tab.ownerSessionId === ownerId).map(tab => tab.name);
 	let count = 0;
 	for (const name of names) {
-		if (await releaseTab(name, opts)) count++;
+		if ((await releaseTab(name, opts)).closed) count++;
 	}
 	return count;
+}
+
+/** Names of currently-alive tabs created by the given owner session id. */
+export function getOpenTabsForOwner(ownerId: string | undefined): string[] {
+	if (!ownerId) return [];
+	return [...tabs.values()]
+		.filter(tab => tab.state === "alive" && tab.ownerSessionId === ownerId)
+		.map(tab => tab.name);
 }
 
 /** Test-only accessor for the module-global tabs map. */

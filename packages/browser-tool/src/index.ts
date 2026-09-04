@@ -13,11 +13,12 @@ import { ToolError } from "./errors.js";
 import { resolveConfig, type BrowserToolConfig, type BrowserToolConfigInput } from "./config.js";
 import { defineTool, type Context, type ContentBlock, type ImageAttachmentRef, type ToolRunContext } from "./deps.js";
 import { acquireBrowser, releaseBrowser, type ResolvedBrowserConfig } from "./browsers/registry.js";
-import { acquireTab, getTab, releaseTab, runInTab, releaseAllTabs, releaseTabsForOwner, expandBrowserScreenshotDir } from "./browsers/tab-supervisor.js";
+import { acquireTab, getTab, releaseTab, runInTab, releaseAllTabs, releaseTabsForOwner, getOpenTabsForOwner, expandBrowserScreenshotDir } from "./browsers/tab-supervisor.js";
 import { resolveRelayKind } from "./relay/kind.js";
 import type { ImageContent, RunResultOk, TextContent } from "./browsers/types.js";
 import type { JsonValue } from "@deepseek-ai/dsh-util-values";
-import { logger } from "./util.js";
+import type { UserMessage } from "@deepseek-ai/dsh-session";
+import { logger, uid } from "./util.js";
 
 export interface BrowserToolOptions {
 	/** Allow spawning/attaching a browser. False disables the tool. */
@@ -37,11 +38,12 @@ export const Config = z.object({
 	screenshotDir: z.string().default(""),
 	noWebP: z.boolean().default(false),
 	installChrome: z.boolean().default(true),
+	remindAgent: z.boolean().default(true),
 });
 
 /** Author-facing parameter schema (dsh-tools ValueSchemaSpec DSL). */
 const parameters = {
-	action: { type: "string" as const, enum: ["open" as const, "run" as const, "close" as const], required: true as const, description: "open: create/reuse a tab; run: execute code in a tab; close: close a tab." },
+	action: { type: "string" as const, enum: ["open" as const, "run" as const, "close" as const], required: true as const, description: "open: create/reuse a tab; run: execute code in a tab; close: close a tab (ALWAYS finish your browser work with a close passing kill:true)." },
 	name: { type: "string" as const, required: true as const, description: "Tab name; unique per session." },
 	url: { type: "string" as const, description: "Initial URL for open." },
 	waitUntil: { type: "string" as const, enum: ["load" as const, "domcontentloaded" as const, "networkidle0" as const, "networkidle2" as const], description: "Navigation lifecycle event to wait for on open." },
@@ -59,7 +61,7 @@ const parameters = {
 	},
 	dialogs: { type: "string" as const, enum: ["accept" as const, "dismiss" as const], description: "Auto-handle JS dialogs for this tab." },
 	code: { type: "string" as const, description: "JavaScript body for run. Scope: page, browser, tab, assert, wait, sleep, display, print, console." },
-	kill: { type: "boolean" as const, description: "Close + kill the owned browser process." },
+	kill: { type: "boolean" as const, description: "Terminate the owned (headless/spawned) browser process. ALWAYS set true on your FINAL close so the Chromium you opened is not left running; for connected/relay browsers (the user's own browser) it only disconnects and never kills it." },
 };
 
 /** Exported so the contract test can validate real result objects against the declared schema. */
@@ -174,7 +176,11 @@ export function apply(ctx: Context, options: BrowserToolOptions = {}): (() => vo
 				"  a cell ending in any other statement omits returnValue entirely, which is normal and not an error. Values that are",
 				"  not JSON (functions, class instances, cycles) are coerced to a string or dropped, so return plain JSON and use",
 				"  display()/print() for anything you want to read regardless.",
-				"- close: close a tab (optionally kill the owned browser).",
+				"- close: close a named tab and release its browser reference. When you are done with all",
+				"  browser work for the session, ALWAYS close your last tab with `kill: true` so the owned",
+				"  headless/spawned Chromium process is terminated instead of left running. Closing without",
+				"  `kill: true` keeps the browser alive while other tabs still reference it; connected/relay",
+				"  browsers are the user's own and are never killed (kill only disconnects them).",
 			].join(" "),
 			parameters,
 			timeoutMs: 300_000,
@@ -227,12 +233,46 @@ export function apply(ctx: Context, options: BrowserToolOptions = {}): (() => vo
 	ctx.on("session/disposed", (session: { id?: string }) => {
 		const ownerId = session?.id;
 		if (!ownerId) return;
-		void releaseTabsForOwner(ownerId).catch((error) => {
-			logger.warn("Failed to release tabs for disposed session", {
-				sessionId: ownerId,
+		void releaseTabsForOwner(ownerId)
+			.then((count) => {
+				remindedOwners.delete(ownerId);
+				if (count > 0) {
+					logger.warn(`Released ${count} browser tab(s) left open by disposed session ${ownerId}`);
+				}
+			})
+			.catch((error) => {
+				logger.warn("Failed to release tabs for disposed session", {
+					sessionId: ownerId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
+	});
+
+	// Turn-end reminder: when an agent's turn goes idle while it still owns open
+	// browser tabs (it never closed them), feed a one-off hint back to the model
+	// via agent.inject() (synthetic user-role context, does not wake the driver)
+	// so the next turn learns to close them with kill:true. Deduped per session
+	// until every tab is closed.
+	ctx.on("agent/status", (payload: AgentStatusPayload) => {
+		if (payload.status !== "idle") return;
+		const ownerId = payload.agent?.session?.id;
+		if (!ownerId) return;
+		const names = getOpenTabsForOwner(ownerId);
+		if (names.length === 0) {
+			remindedOwners.delete(ownerId);
+			return;
+		}
+		if (remindedOwners.has(ownerId) || !settings.remindAgent) return;
+		remindedOwners.add(ownerId);
+		logger.warn(`Agent ${ownerId} left ${names.length} browser tab(s) open at turn end: ${names.join(", ")}`);
+		try {
+			payload.agent.inject(buildTabReminderMessage(names));
+		} catch (error) {
+			remindedOwners.delete(ownerId);
+			logger.warn("Failed to inject browser-tab reminder", {
 				error: error instanceof Error ? error.message : String(error),
 			});
-		});
+		}
 	});
 
 	return () => {
@@ -241,6 +281,36 @@ export function apply(ctx: Context, options: BrowserToolOptions = {}): (() => vo
 				error: error instanceof Error ? error.message : String(error),
 			});
 		});
+	};
+}
+
+/**
+ * Structural view of the dsh-agent `agent/status` payload. Typed locally so the
+ * plugin does not need a hard dependency on @deepseek-ai/dsh-agent types; the
+ * runtime payload is the live Agent (with `inject`).
+ */
+interface AgentStatusPayload {
+	agent: {
+		readonly session: { id: string };
+		inject(message: UserMessage): void;
+	};
+	status: "idle" | "running";
+}
+
+/** Set of owner session ids that already received a turn-end tab reminder. */
+const remindedOwners = new Set<string>();
+
+/** Build the model-facing "tabs left open" reminder message (plugin notice). */
+function buildTabReminderMessage(names: string[]): UserMessage {
+	const summary = `${names.length} browser tab(s) left open`;
+	const text =
+		`browser-tool: ${names.length} browser tab(s) are still open: ${names.map((n) => JSON.stringify(n)).join(", ")}.` +
+		` If you are done with the browser, close each remaining tab with action:"close" and kill:true to terminate the Chromium process; otherwise it stays running until the session ends.`;
+	return {
+		id: `bt-remind-${uid.next()}` as UserMessage["id"],
+		role: "user",
+		content: [{ type: "text", text }],
+		source: { kind: "plugin", plugin: "dsh-browser-tool", form: "notice", summary },
 	};
 }
 
@@ -387,14 +457,25 @@ async function actionClose(args: BrowserToolArgs, exec: ToolRunContext, browserS
 	void exec;
 	void browserSettings;
 	const timeoutMs = args.timeout ?? 10_000;
-	const closed = await releaseTab(args.name, { kill: args.kill ?? false, timeoutMs });
-	return {
-		ok: true,
-		name: args.name,
-		message: closed
-			? `Closed tab ${JSON.stringify(args.name)}${args.kill ? " and killed its browser" : ""}`
-			: `Tab ${JSON.stringify(args.name)} was not open`,
-	};
+	const result = await releaseTab(args.name, { kill: args.kill ?? false, timeoutMs });
+	if (!result.closed) {
+		return { ok: true, name: args.name, message: `Tab ${JSON.stringify(args.name)} was not open` };
+	}
+	// Owned browsers (headless/spawned) are processes the agent should free;
+	// connected/relay are the user's own browser and must never be killed.
+	const owned = result.kindTag === "headless" || result.kindTag === "spawned";
+	let message = `Closed tab ${JSON.stringify(args.name)}`;
+	if (owned) {
+		if (result.browserAlive) {
+			message += "; browser still running (other tabs still hold it)";
+			if (!args.kill) message += " - when you finish, close the remaining tabs with kill:true to free it";
+		} else {
+			message += args.kill ? " and killed its browser" : " (browser process terminated with this tab)";
+		}
+	} else if (args.kill) {
+		message += " (disconnected; user's own browser left running)";
+	}
+	return { ok: true, name: args.name, message };
 }
 
 export default { name, inject, Config, apply };

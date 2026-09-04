@@ -290,6 +290,11 @@ async function disposeBrowser(handle: BrowserHandle, opts: ReleaseBrowserOptions
 	}
 }
 
+/** Whether a live browser handle is still registered under the given key. */
+export function isBrowserAlive(key: string): boolean {
+	return browsers.has(key);
+}
+
 /** Test-only accessor for the module-global browsers map. */
 export function getBrowsersMapForTest(): ReadonlyMap<string, BrowserHandle> {
 	return browsers;

@@ -15,8 +15,10 @@ DSH（DeepSeek Harness）浏览器工具包：在 Agent 会话中驱动 Chromium
   - `read/write/env/tree/tool/agent/parallel/pipeline/phase/log/budget` 等 omp 专属 helper 明确报错；
   - op 级超时低于 cell 预算（`OP_DEADLINE_SLACK_MS=1000`），超时走 tab worker recycle 或强制回收。
 - **close** — 关闭标签页，可 `kill` 一并结束自己拥有的浏览器。
-  - 自己拥有（headless/spawned）的浏览器在最后一个标签页关闭后自动回收进程；connected/relay 只 disconnect 不关闭。
+  - 自己拥有（headless/spawned）的浏览器在最后一个标签页关闭后自动回收进程；connected/relay 只 disconnect 不关闭（`kill` 对它们也无效，绝不杀用户自己的浏览器）。
+  - **收尾时最后关闭应带 `kill: true`**：工具描述与 `kill` 参数说明都会要求 agent 在结束浏览器工作时这么做，且 `close` 的返回消息会明确告诉 agent 浏览器是否仍存活（其他标签页还持有）或已随本标签终止，形成即时提示，避免遗留 headless Chromium 进程。
   - 会话被销毁（`session/disposed`）时释放该会话创建的标签页，插件卸载时释放全部标签页。
+  - **回合结束回灌提示**：agent 某回合结束时仍留有未关闭的标签页，插件会经 `agent.inject()` 给模型注入一条一次性 user-role 提示（"仍有 N 个标签未关，收尾请用 kill:true"），不唤醒 driver，只在下一回合被模型看到；同一批未关标签只提示一次，全部关闭后复位。可用 `DSH_BROWSER_REMIND_AGENT=0` 关闭，同时会打 warn 日志记录泄漏的标签。
 - **relay CLI**（`dsh-browser-relay`）：`serve`（HTTP+WS，伪装 Chrome CDP discovery `/json/version`、`/json/list`、`/cdp`）、`install`（把扩展装入 `~/.dsh/browser-relay/extension`）、`status`。扩展资产提交在 `src/assets/relay/extension-assets`。
 
 ## 结构
@@ -101,6 +103,7 @@ browser action:"close"   name:"wiki"
 | `DSH_BROWSER_SCREENSHOT_DIR` | 截图落盘目录 |
 | `DSH_BROWSER_NO_WEBP` | 1 时模型副本用 PNG |
 | `DSH_BROWSER_INSTALL_CHROME` | 0 不自动下载 Chromium |
+| `DSH_BROWSER_REMIND_AGENT` | 0 关闭回合结束的"仍有标签未关"回灌提示 |
 | `DSH_BROWSER_DONOR_CACHE` | 额外的 Chromium 复用来源（`@puppeteer/browsers` 缓存目录） |
 | `PUPPETEER_EXECUTABLE_PATH` / `DSH_BROWSER_EXECUTABLE` | 指定 Chromium 可执行文件 |
 | `PUPPETEER_PROXY_*` | 下载/Chrome 代理（透传 puppeteer） |
