@@ -19,6 +19,7 @@
 		"check": "pnpm -r check",
 		"test": "pnpm -r test",
 		"smoke": "pnpm -r smoke",
+		"login:npm": "pnpm login --registry=https://registry.npmjs.org/",
 		"release": "pnpm -r --filter='!melon' publish --access public --no-git-checks"
 	},
 	"devDependencies": {
