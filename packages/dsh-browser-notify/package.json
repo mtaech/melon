@@ -1,0 +1,85 @@
+{
+	"name": "dsh-browser-notify",
+	"version": "0.1.1",
+	"description": "DSH 浏览器通知插件：agent 回合结束、向你提问或请求授权时，用浏览器系统通知提醒你（仅当页面不在前台时）",
+	"type": "module",
+	"main": "lib/host.js",
+	"types": "lib/host.d.ts",
+	"exports": {
+		".": {
+			"types": "./lib/host.d.ts",
+			"default": "./lib/host.js"
+		},
+		"./client": "./lib/client.cjs",
+		"./cordis.patch.yml": "./cordis.patch.yml",
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"lib",
+		"src",
+		"cordis.patch.yml",
+		"README.md",
+		"LICENSE"
+	],
+	"dsh": {
+		"bundle": {
+			"patch": "./cordis.patch.yml"
+		},
+		"client": {
+			"inject": [
+				"@deepseek-ai/dsh-api-gateway"
+			],
+			"platform": "web"
+		}
+	},
+	"license": "MIT",
+	"author": "画野 (mtaech)",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/mtaech/melon.git",
+		"directory": "packages/dsh-browser-notify"
+	},
+	"homepage": "https://github.com/mtaech/melon/tree/main/packages/dsh-browser-notify#readme",
+	"bugs": {
+		"url": "https://github.com/mtaech/melon/issues"
+	},
+	"keywords": [
+		"dsh",
+		"dsh-plugin",
+		"notification",
+		"notify",
+		"web-notification"
+	],
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	},
+	"scripts": {
+		"build": "node build.mjs",
+		"smoke": "pnpm run build && node scripts/smoke.mjs",
+		"prepublishOnly": "pnpm run build"
+	},
+	"devDependencies": {
+		"esbuild": "catalog:"
+	},
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "^4.0.2",
+		"@deepseek-ai/dsh-host-webserver": "^0.1.2-alpha.3",
+		"@deepseek-ai/dsh-api-gateway": "^0.1.2-alpha.3",
+		"@deepseek-ai/schemastery": "^3.18.2"
+	},
+	"peerDependenciesMeta": {
+		"@deepseek-ai/cordis": {
+			"optional": true
+		},
+		"@deepseek-ai/dsh-host-webserver": {
+			"optional": true
+		},
+		"@deepseek-ai/dsh-api-gateway": {
+			"optional": true
+		},
+		"@deepseek-ai/schemastery": {
+			"optional": true
+		}
+	}
+}

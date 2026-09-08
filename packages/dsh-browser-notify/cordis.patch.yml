@@ -1,0 +1,8 @@
+# dsh-browser-notify bundle patch: inserts the plugin into a profile's layer stack. The
+# host half (exports ".") declares the notification Config and registers the
+# /plugins/dsh-browser-notify/api/config route on the host webserver; the `dsh.client`
+# declaration in package.json makes the browser half (exports "./client") load
+# in the web GUI and subscribe to the Remote event stream.
+- insert:
+    - id: dsh-browser-notify
+      name: 'dsh-browser-notify'
