@@ -42,10 +42,10 @@
    * 用 brand 6% 底 + 22% 描边让展开分组有足够的存在感 */
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 6%, transparent);
   border: 1px solid color-mix(in srgb, var(--dsw-alias-brand-primary) 22%, transparent);
-  border-radius: var(--m3-shape-medium, 12px);
-  padding: 4px;
-  margin-top: 6px;
-  margin-bottom: 4px;
+  border-radius: var(--m3-shape-large, 16px);
+  padding: 8px 6px;
+  margin-top: 10px;
+  margin-bottom: 6px;
 }
 
 /* ---- 工作区行：分组锚点，字重略重 ------------------------------------------ */
