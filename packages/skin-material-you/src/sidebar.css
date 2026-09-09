@@ -6,8 +6,7 @@
  * 面的修饰，不改 DOM：
  *
  *   1. 展开的工作区分组罩一层 tonal 卡片（:has(sessionRow) 识别展开态）；
- *      折叠工作区行加高（42px），相邻折叠分组之间内缩发丝线 + 呼吸间距，
- *      「卡片」与「分隔行」两种形态各自清晰
+ *      折叠工作区行加高（42px），相邻折叠分组之间靠留白分界（无线条）
  *   2. 工作区行加重字重，当前工作区用品牌色点出（层级）
  *   3. 会话行整体缩进，并用 ::before 拼出一条连续的树状引导线（归属）
  *   4. 选中会话 = M3 tonal pill（品牌色 10% 底 + 品牌色文字），引导线对
@@ -30,8 +29,11 @@
 /* ---- 工作区分组之间的分界 ----------------------------------------------------
  * 展开态用 :has(sessionRow) 纯 CSS 识别（会话行在 DOM 里是工作区行的兄弟
  * 节点，只在展开时渲染）。展开分组整组罩 tonal 卡片；折叠分组行加高，
- * 相邻折叠分组之间用内缩发丝线 + 呼吸间距分界。只作用于「折叠 + 折叠」
- * 相邻对，避免在卡片边缘再叠一条线。
+ * 相邻折叠分组之间靠留白（8px）分界。
+ *
+ * 这里刻意不用分隔线：全宽线把列表切成表格，内缩线又会在图标列留下一段
+ * 没有来由的空白。M3 列表本身也只在「区块」之间用分隔线，同区块内的条目
+ * 靠行高 + 留白区分，所以折叠行之间只留白。
  * ------------------------------------------------------------------------- */
 
 [class*="treeBody"] [class*="groupSection"] + [class*="groupSection"] {
@@ -43,20 +45,9 @@
   min-height: 42px;
 }
 
-/* 相邻折叠分组之间：内缩发丝线（M3 list divider）+ 呼吸间距。
- * 线从工作区名称起点开始，不穿过 folder 图标区——全宽线会像表格，太硬。 */
+/* 相邻折叠分组之间：纯留白分界（无线条） */
 [class*="treeBody"] [class*="groupSection"]:not(:has([class*="sessionRow"])) + [class*="groupSection"]:not(:has([class*="sessionRow"])) {
-  margin-top: 4px;
-  padding-top: 4px;
-  position: relative;
-}
-
-[class*="treeBody"] [class*="groupSection"]:not(:has([class*="sessionRow"])) + [class*="groupSection"]:not(:has([class*="sessionRow"]))::before {
-  content: "";
-  display: block;
-  height: 1px;
-  margin: 0 6px 4px 34px;
-  background: var(--dsw-alias-border-l2);
+  margin-top: 8px;
 }
 
 [class*="treeBody"] [class*="groupSection"]:has([class*="sessionRow"]) {
