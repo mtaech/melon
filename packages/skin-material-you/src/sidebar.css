@@ -109,6 +109,9 @@
 
 [class*="treeBody"] [class*="sessionOverflowButton"] {
   margin-left: 22px;
+  /* 原样式是 width:100%，叠加 margin-left 会把列表撑出横向滚动条；
+   * width:auto 让按钮宽度 = 容器宽 − 缩进，视觉不变但不再溢出 */
+  width: auto;
   color: var(--dsw-alias-label-secondary);
   font-size: 12px;
 }
