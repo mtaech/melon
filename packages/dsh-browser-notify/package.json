@@ -1,6 +1,6 @@
 {
 	"name": "dsh-browser-notify",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "DSH 浏览器通知插件：agent 回合结束、向你提问或请求授权时，用浏览器系统通知提醒你（仅当页面不在前台时）",
 	"type": "module",
 	"main": "lib/host.js",
@@ -64,8 +64,8 @@
 	},
 	"peerDependencies": {
 		"@deepseek-ai/cordis": "^4.0.2",
-		"@deepseek-ai/dsh-host-webserver": "^0.1.2-alpha.3",
-		"@deepseek-ai/dsh-api-gateway": "^0.1.2-alpha.3",
+		"@deepseek-ai/dsh-host-webserver": "^0.1.5-alpha.1",
+		"@deepseek-ai/dsh-api-gateway": "^0.1.5-alpha.1",
 		"@deepseek-ai/schemastery": "^3.18.2"
 	},
 	"peerDependenciesMeta": {

@@ -1,6 +1,6 @@
 {
 	"name": "dsh-skin-material-you",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "Material You (Material 3) skin for DeepSeek Harness: HCT tonal palette + Maple Mono NF CN typography",
 	"type": "module",
 	"main": "lib/index.js",
@@ -64,9 +64,9 @@
 	},
 	"peerDependencies": {
 		"@deepseek-ai/cordis": "^4.0.2",
-		"@deepseek-ai/dsh-client-locale": "^0.1.2-alpha.3",
-		"@deepseek-ai/dsh-client-ui-renderer": "^0.1.2-alpha.3",
-		"@deepseek-ai/dsh-client-ui-theme": "^0.1.2-alpha.3"
+		"@deepseek-ai/dsh-client-locale": "^0.1.5-alpha.1",
+		"@deepseek-ai/dsh-client-ui-renderer": "^0.1.5-alpha.1",
+		"@deepseek-ai/dsh-client-ui-theme": "^0.1.5-alpha.1"
 	},
 	"peerDependenciesMeta": {
 		"@deepseek-ai/cordis": {
