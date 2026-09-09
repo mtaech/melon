@@ -5,8 +5,8 @@
  * 既没有工作区之间的分界，也看不出会话隶属于哪个工作区。这里只做 CSS 层
  * 面的修饰，不改 DOM：
  *
- *   1. 工作区一律用 M3 卡片：折叠 = 中性 filled card（:has(sessionRow) 不存在），
- *      展开 = 品牌色 tonal card（:has(sessionRow) 存在）
+ *   1. 折叠工作区平铺 + 8px 留白分界，hover 浮出圆角卡片；展开的工作区
+ *      罩一层品牌色 tonal 卡片（:has(sessionRow) 识别展开态）
  *   2. 工作区行加重字重，当前工作区用品牌色点出（层级）
  *   3. 会话行整体缩进，并用 ::before 拼出一条连续的树状引导线（归属）
  *   4. 选中会话 = M3 tonal pill（品牌色 10% 底 + 品牌色文字），引导线对
@@ -28,40 +28,29 @@
 
 /* ---- 工作区分组之间的分界 ----------------------------------------------------
  * 展开态用 :has(sessionRow) 纯 CSS 识别（会话行在 DOM 里是工作区行的兄弟
- * 节点，只在展开时渲染）。两种形态都用 M3 卡片：
- *   - 折叠工作区 = 中性 filled card（bg-layer-2 底 + 12px 圆角 + 卡间距）
+ * 节点，只在展开时渲染）：
+ *   - 折叠工作区 = 常态平铺行，靠 8px 留白分界；hover 时才浮出圆角卡片
  *   - 展开工作区 = 品牌色 tonal card（brand 6% 底 + 22% 描边）
  *
- * 刻意不用分隔线：全宽线把列表切成表格，内缩线又会在图标列留下一段没有
- * 来由的空白。M3 的 filled card 本身就没有描边，靠 surface 色差和圆角成形，
- * 卡片之间的间距就是分界。
+ * 试过的弯路：全宽分隔线像表格；内缩分隔线在图标列留一截没来由的空白；
+ * 每行一张 filled card 在窄侧栏里堆成一摞灰方块。侧栏窄，平铺 + 留白最耐看，
+ * 卡片形态留给 hover 和「展开中的工作区」两处真正需要强调的地方。
  * ------------------------------------------------------------------------- */
 
 [class*="treeBody"] [class*="groupSection"] + [class*="groupSection"] {
   margin-top: 2px;
 }
 
-/* 折叠工作区 = M3 filled card（44px 高、12px 圆角、中性 surface） */
+/* 折叠工作区行加高到 44px。注意这里刻意不设 background：
+ * 本选择器特异性高于通用 hover 规则，一旦设了底色，hover 卡片就浮不出来。 */
 [class*="treeBody"] [class*="groupSection"]:not(:has([class*="sessionRow"])) [class*="projectRow"] {
   min-height: 44px;
-  background: var(--dsw-alias-bg-layer-2);
   border-radius: var(--m3-shape-medium, 12px);
 }
 
-/* 相邻折叠卡片之间留出卡间距 */
+/* 相邻折叠工作区之间：留白分界（无线条、无底色） */
 [class*="treeBody"] [class*="groupSection"]:not(:has([class*="sessionRow"])) + [class*="groupSection"]:not(:has([class*="sessionRow"])) {
-  margin-top: 6px;
-}
-
-/* 折叠卡片的 hover：保留卡片底色，只叠一层极轻的中性渐变。
- * 通用 hover 规则用 background 直接换色，会把 filled card 的底换成透明，
- * 卡片在 hover 时「消失」——这里改用 background-image 叠加。 */
-[class*="treeBody"] [class*="groupSection"]:not(:has([class*="sessionRow"])) [class*="projectRow"]:hover {
-  background-color: var(--dsw-alias-bg-layer-2);
-  background-image: linear-gradient(
-    color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent),
-    color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent)
-  );
+  margin-top: 8px;
 }
 
 [class*="treeBody"] [class*="groupSection"]:has([class*="sessionRow"]) {
