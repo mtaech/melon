@@ -5,7 +5,8 @@
  * 既没有工作区之间的分界，也看不出会话隶属于哪个工作区。这里只做 CSS 层
  * 面的修饰，不改 DOM：
  *
- *   1. 工作区分组之间加发丝分隔线 + 呼吸间距（分界）
+ *   1. 展开的工作区分组罩一层 tonal 卡片（:has(sessionRow) 识别展开态），
+ *      折叠分组保持平铺——「卡片 vs 平铺」的形态差异就是分组分界
  *   2. 工作区行加重字重，当前工作区用品牌色点出（层级）
  *   3. 会话行整体缩进，并用 ::before 拼出一条连续的树状引导线（归属）
  *   4. 选中会话 = M3 tonal pill（品牌色 10% 底 + 品牌色文字），引导线对
@@ -26,13 +27,22 @@
 }
 
 /* ---- 工作区分组之间的分界 ----------------------------------------------------
- * groupSection 之间：上发丝线 + 间距。第一个分组不加，避免与区块标题打架。
+ * 折叠分组只是单行，发丝线会把整条列表切成零碎的一段段，因此分界用形态
+ * 差异表达：折叠分组保持平铺（仅 2px 节奏间距），展开分组整组罩一层
+ * tonal 卡片。展开态用 :has(sessionRow) 纯 CSS 识别（会话行在 DOM 里是
+ * 工作区行的兄弟节点，只在展开时渲染）。
  * ------------------------------------------------------------------------- */
 
 [class*="treeBody"] [class*="groupSection"] + [class*="groupSection"] {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--dsw-alias-border-l1);
+  margin-top: 2px;
+}
+
+[class*="treeBody"] [class*="groupSection"]:has([class*="sessionRow"]) {
+  background: var(--dsw-alias-bg-layer-1);
+  border-radius: var(--m3-shape-medium, 12px);
+  padding: 4px;
+  margin-top: 6px;
+  margin-bottom: 4px;
 }
 
 /* ---- 工作区行：分组锚点，字重略重 ------------------------------------------ */
