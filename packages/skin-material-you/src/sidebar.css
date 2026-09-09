@@ -77,6 +77,13 @@
   border-radius: var(--m3-shape-small, 8px);
 }
 
+/* 行首状态槽位空着时也占 16px + 间距，会在引导线与标题之间留下一大片空白。
+ * 空槽位不预留宽度，会话标题正好对齐工作区标题；有状态图标的行（Running 等）
+ * 保留槽位，图标本身就是这段缩进的视觉解释。 */
+[class*="treeBody"] [class*="sessionRow"] [class*="slot"]:empty {
+  display: none;
+}
+
 [class*="treeBody"] [class*="sessionRow"]::before {
   content: "";
   position: absolute;
