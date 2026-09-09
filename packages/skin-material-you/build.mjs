@@ -1,6 +1,7 @@
 // Rebuild lib/ from src/: the client bundle (tokens.mjs + fonts.css +
-// palette.css inlined into a __ModuleLoader__.load call) plus the host-half
-// entry and its typings. lib/ is generated output and is not committed.
+// palette.css + sidebar.css inlined into a __ModuleLoader__.load call) plus
+// the host-half entry and its typings. lib/ is generated output and is not
+// committed.
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -9,7 +10,8 @@ import { materialYouTokens } from './src/tokens.mjs';
 const here = dirname(fileURLToPath(import.meta.url));
 const fontsCss = readFileSync(join(here, 'src/fonts.css'), 'utf8');
 const paletteCss = readFileSync(join(here, 'src/palette.css'), 'utf8');
-const styleCss = fontsCss + '\n' + paletteCss;
+const sidebarCss = readFileSync(join(here, 'src/sidebar.css'), 'utf8');
+const styleCss = fontsCss + '\n' + paletteCss + '\n' + sidebarCss;
 mkdirSync(join(here, 'lib'), { recursive: true });
 
 const tokensJson = JSON.stringify(materialYouTokens);
@@ -25,7 +27,7 @@ const bundle = `window.__ModuleLoader__.load({
 		// ---- inlined Material You token override map (HCT tonal palettes) ----
 		const materialYouTokens = ${tokensJson};
 
-		// ---- inlined CSS (MapleMono typography + M3 shape/type tokens + palette ref) ----
+		// ---- inlined CSS (MapleMono typography + M3 shape/type tokens + palette ref + sidebar refinement) ----
 		const SKIN_STYLE_TAG = 'material-you/skin-styles';
 		const styleCss = ${cssJson};
 

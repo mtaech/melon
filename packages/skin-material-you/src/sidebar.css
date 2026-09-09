@@ -1,0 +1,114 @@
+/* ============================================================================
+ * Material You skin — workspace sidebar refinement
+ *
+ * 目标：左侧「工作区」列表的结构层级。原生列表把工作区行与会话行全部平铺，
+ * 既没有工作区之间的分界，也看不出会话隶属于哪个工作区。这里只做 CSS 层
+ * 面的修饰，不改 DOM：
+ *
+ *   1. 工作区分组之间加发丝分隔线 + 呼吸间距（分界）
+ *   2. 工作区行加重字重，当前工作区用品牌色点出（层级）
+ *   3. 会话行整体缩进，并用 ::before 拼出一条连续的树状引导线（归属）
+ *   4. 选中会话 = M3 tonal pill（品牌色 10% 底 + 品牌色文字），引导线对
+ *      应段同步高亮
+ *
+ * 选择器一律用 [class*="localName"] 属性子串：DSH 的类名是 CSS module
+ * 「哈希_本地名」（如 bhn1Oq_groupSection），哈希随构建变化，本地名稳定。
+ * 颜色全部引用 --dsw-alias-* 语义 token，浅/深色主题都自动适配。
+ * ============================================================================ */
+
+/* ---- 区块标题「Workspaces / 工作区」：降为中距caption，给列表让出层级 ------ */
+
+[class*="regionArea"] [class*="sectionHeader"] {
+  font-size: 12px;
+  font-weight: 560;
+  letter-spacing: 0.06em;
+  color: var(--dsw-alias-label-secondary);
+}
+
+/* ---- 工作区分组之间的分界 ----------------------------------------------------
+ * groupSection 之间：上发丝线 + 间距。第一个分组不加，避免与区块标题打架。
+ * ------------------------------------------------------------------------- */
+
+[class*="treeBody"] [class*="groupSection"] + [class*="groupSection"] {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+
+/* ---- 工作区行：分组锚点，字重略重 ------------------------------------------ */
+
+[class*="treeBody"] [class*="projectRow"] {
+  border-radius: var(--m3-shape-small, 8px);
+}
+
+[class*="treeBody"] [class*="projectRow"] [class*="projectText"] [class*="title"] {
+  font-weight: 560;
+}
+
+/* 当前工作区：图标与名称都用品牌色（DSH 自带 folderActive 只染了图标） */
+[class*="treeBody"] [class*="projectRow"]:has([class*="folderActive"]) [class*="title"] {
+  color: var(--dsw-alias-brand-primary);
+  font-weight: 600;
+}
+
+/* ---- 会话行：缩进 + 树状引导线 ----------------------------------------------
+ * 会话行与工作区行在 DOM 里是兄弟节点，没有嵌套容器。用 margin-left 制造
+ * 缩进（22px ≈ 工作区行 folder 图标宽度 + 间距，让会话标题大致对齐工作区
+ * 标题）；每行的 ::before 画一小段竖线，行与行之间无间隙，拼起来就是一条
+ * 从工作区行下方贯通到分组末尾的连续引导线。
+ * ------------------------------------------------------------------------- */
+
+[class*="treeBody"] [class*="sessionRow"] {
+  position: relative;
+  margin-left: 22px;
+  border-radius: var(--m3-shape-small, 8px);
+}
+
+[class*="treeBody"] [class*="sessionRow"]::before {
+  content: "";
+  position: absolute;
+  left: -11px; /* 对齐工作区行 folder 图标的视觉中心 */
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--dsw-alias-border-l2);
+}
+
+/* 选中会话：M3 tonal pill + 引导线对应段高亮 */
+[class*="treeBody"] [class*="sessionRow"][class*="selected"] {
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent);
+}
+
+[class*="treeBody"] [class*="sessionRow"][class*="selected"]::before {
+  background: var(--dsw-alias-brand-primary);
+}
+
+[class*="treeBody"] [class*="sessionRow"][class*="selected"] [class*="title"] {
+  color: var(--dsw-alias-brand-primary);
+  font-weight: 560;
+}
+
+[class*="treeBody"] [class*="sessionRow"][class*="selected"] [class*="time"] {
+  color: var(--dsw-alias-brand-primary);
+}
+
+/* 未选中会话的 hover：极轻的中性底色（选中态保持品牌色不被覆盖） */
+[class*="treeBody"] [class*="sessionRow"]:not([class*="selected"]):hover,
+[class*="treeBody"] [class*="projectRow"]:hover {
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent);
+}
+
+/* ---- 时间戳：等宽数字，避免「1min / 17小时」宽度跳动 ------------------------ */
+
+[class*="treeBody"] [class*="sessionRow"] [class*="time"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 「显示更多会话」按钮：与会话行同缩进，降为次要文字 ---------------------- */
+
+[class*="treeBody"] [class*="sessionOverflowButton"] {
+  margin-left: 22px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}

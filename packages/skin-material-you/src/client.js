@@ -8,6 +8,7 @@
  */
 import { materialYouTokens } from './tokens.mjs';
 import fontStyles from './fonts.css?inline';
+import sidebarStyles from './sidebar.css?inline';
 
 const SOURCE = 'dsh-skin-material-you';
 const STYLE_TAG_ID = SOURCE + '/material-you-styles';
@@ -38,7 +39,7 @@ export const inject = ['theme'];
 
 export function apply(ctx) {
   const disposeOverride = ctx.theme.overrideTokens(SOURCE, materialYouTokens);
-  const disposeStyles = injectStyles(fontStyles);
+  const disposeStyles = injectStyles(fontStyles + '\n' + sidebarStyles);
 
   const disposeLight = ctx.theme.register({
     id: 'material-you-light',

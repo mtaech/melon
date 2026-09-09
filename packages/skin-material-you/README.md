@@ -19,6 +19,7 @@
 | 字重 | 100–800（Thin…ExtraBold）+ 全套斜体 |
 | 动效 | M3 emphasized/standard 缓动，支持 `prefers-reduced-motion` |
 | 形状 | M3 圆角体系（4/8/12/16/28/full px） |
+| 侧栏精修 | 工作区分组分隔线 + 会话树状引导线 + 选中会话 tonal pill（`src/sidebar.css`） |
 
 ## 2. 种子色与 HCT 色调色板
 
@@ -131,7 +132,7 @@ Regular/Medium/Bold：
 packages/skin-material-you/   # melon 单仓库中的一个包
 ├── package.json        # dsh.bundle.patch + dsh.client 声明（标准插件形态）
 ├── cordis.patch.yml    # 自带 patch：insert 皮肤行（bundle 层）
-├── build.mjs           # 构建脚本：src/tokens.mjs + fonts.css + palette.css → lib/client.js
+├── build.mjs           # 构建脚本：src/tokens.mjs + fonts.css + palette.css + sidebar.css → lib/client.js
 ├── README.md           # 本文档
 ├── demo.png            # 主题展示截图
 ├── LICENSE             # MIT
@@ -142,6 +143,7 @@ packages/skin-material-you/   # melon 单仓库中的一个包
 │   ├── tokens.mjs      # M3 色调色板 → DSH --dsw-* 覆盖（source of truth）
 │   ├── fonts.css       # Maple Mono @font-face + M3 type scale / shape / motion token
 │   ├── palette.css     # 原始 HCT 色板（参考/文档）
+│   ├── sidebar.css     # 侧栏工作区列表精修（分组分隔 / 树状引导线 / 选中 tonal pill）
 │   ├── client.js       # 源版插件体（apply/overrideTokens/register/注入 CSS）
 │   ├── client.d.ts
 │   └── index.js / index.d.ts   # host 入口（no-op 插件，构建时复制进 lib/）
