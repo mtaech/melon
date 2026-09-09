@@ -42,12 +42,23 @@ function enhanceSidebarWorkspaces() {
     return typeof navigator !== "undefined" && typeof navigator.language === "string" ? navigator.language : "en";
   }
 
-  /** Compact relative time via Intl; empty string when the stamp is unusable. */
+  /**
+   * Compact relative time. Intl's zh-CN output ("2 小时前") is too wide for this
+   * sidebar and makes the right-hand column ragged, so Chinese uses bare units
+   * ("2小时") and other locales use Latin abbreviations ("2h ago").
+   */
+  const COMPACT_UNITS = {
+    zh: { now: "刚刚", suffix: "", minute: "分", hour: "小时", day: "天", month: "月", year: "年" },
+    latin: { now: "now", suffix: " ago", minute: "m", hour: "h", day: "d", month: "mo", year: "y" },
+  };
+
   function relativeTime(iso) {
     if (typeof iso !== "string") return "";
     const deltaMs = Date.now() - Date.parse(iso);
     if (!Number.isFinite(deltaMs)) return "";
+    const table = locale().toLowerCase().startsWith("zh") ? COMPACT_UNITS.zh : COMPACT_UNITS.latin;
     const minutes = deltaMs / 60_000;
+    if (Math.abs(minutes) < 1) return table.now;
     const hours = minutes / 60;
     const days = hours / 24;
     const months = days / 30;
@@ -70,11 +81,7 @@ function enhanceSidebarWorkspaces() {
       value = years;
       unit = "year";
     }
-    try {
-      return new Intl.RelativeTimeFormat(locale(), { numeric: "auto", style: "narrow" }).format(-Math.round(value), unit);
-    } catch {
-      return "";
-    }
+    return Math.max(1, Math.round(value)) + table[unit] + table.suffix;
   }
 
   /**

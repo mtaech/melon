@@ -167,13 +167,16 @@
   line-height: 1;
   color: var(--dsw-alias-label-secondary);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-/* 会话数胶囊：等宽数字，避免 1 位/2 位宽度跳动 */
+/* 会话数胶囊：定宽 + 居中，保证不同位数的计数都落在同一列 */
 [class*="treeBody"] [class*="projectRow"] .dsh-skin-ws-count {
-  min-width: 18px;
+  flex: 0 0 auto;
+  min-width: 20px;
   height: 18px;
-  padding: 0 5px;
+  padding: 0 4px;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -182,8 +185,11 @@
   font-weight: 560;
 }
 
-/* 最近活动：比胶囊更弱，纯说明文字 */
+/* 最近活动：固定列宽右对齐。时间文案长短不一，若不定宽会把计数胶囊顶得
+ * 左右乱跑，右栏看起来就散了。 */
 [class*="treeBody"] [class*="projectRow"] .dsh-skin-ws-time {
+  flex: 0 0 46px;
+  text-align: right;
   white-space: nowrap;
 }
 
