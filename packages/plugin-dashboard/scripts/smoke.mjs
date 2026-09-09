@@ -137,6 +137,19 @@ check("plugin returns disposer", typeof disposer === "function");
 }
 {
 	const { promise, res } = fakeRes();
+	await route.handler(fakeReq("POST", "/plugins/dsh-plugin-dashboard/api/upgrade-all", {}), res);
+	const { status, body } = await promise;
+	const items = body.plan?.items || [];
+	check("upgrade-all plan lists both packages", status === 200 && items.length === 2 && items.every((i) => i.wouldChange), JSON.stringify(body).slice(0, 200));
+}
+{
+	const { promise, res } = fakeRes();
+	await route.handler(fakeReq("POST", "/plugins/dsh-plugin-dashboard/api/upgrade-all", { apply: true }), res);
+	const { status, body } = await promise;
+	check("upgrade-all apply reports 2 successes", status === 200 && body.appliedCount === 2 && body.failedCount === 0, JSON.stringify(body).slice(0, 200));
+}
+{
+	const { promise, res } = fakeRes();
 	await route.handler(fakeReq("POST", "/plugins/dsh-plugin-dashboard/api/uninstall", { name: "fx-npm" }), res);
 	const { status, body } = await promise;
 	check("uninstall plan", status === 200 && body.plan.wouldRemove === true && body.plan.inDependencies && body.plan.inBundles, JSON.stringify(body));
@@ -172,6 +185,8 @@ await rm(root, { recursive: true, force: true });
 	// ModuleLoader contract: factory declares module/exports, returns module.exports
 	check("client factory returns exports", client.includes('return module.exports;'), "");
 	check("client exports inject", client.includes('inject: () => inject') && client.includes('var inject = ["slots"]'), "");
+	// esbuild escapes non-ASCII (charset: ascii), so assert the wire path + injected methods instead of the button label.
+	check("client offers the bulk update action", client.includes("/upgrade-all") && client.includes("planAll") && client.includes("applyAll"), "");
 }
 
 // ── 3. real web profile through the host plugin (network tolerant) ──

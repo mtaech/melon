@@ -222,6 +222,62 @@ describe("host plugin", () => {
 		}
 	});
 
+	test("upgrade-all plan lists every upgradeable entry", async () => {
+		const root = await fixtureProfile();
+		try {
+			const { route } = mount(root, fakeRegistry());
+			const { promise, res } = fakeRes();
+			await route.handler(fakeReq("POST", "/plugins/dsh-plugin-dashboard/api/upgrade-all", {}), res);
+			const { status, body } = await promise;
+			expect(status).toBe(200);
+			const plan = (body as { plan: { items: Array<{ name: string; newSpecifier: string }>; skipped: unknown[] } }).plan;
+			expect(plan.items.map((i) => i.name)).toEqual(["fx-git", "fx-npm"]);
+			expect(plan.skipped).toEqual([]);
+			expect(plan.items.find((i) => i.name === "fx-npm")?.newSpecifier).toBe("^1.1.0");
+			expect(plan.items.find((i) => i.name === "fx-git")?.newSpecifier).toBe("github:example/fx-git#v0.2.0");
+			// dry run must not touch the profile
+			const pkg = JSON.parse(await readFile(path.join(root, "fx", "package.json"), "utf8")) as { dependencies: Record<string, string> };
+			expect(pkg.dependencies["fx-npm"]).toBe("^1.0.0");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("upgrade-all apply runs one dsh plugin add per package and patches every specifier", async () => {
+		const root = await fixtureProfile();
+		const spawned: string[][] = [];
+		const sub = {
+			spawn: (spec: { argv: string[] }) => {
+				spawned.push([...spec.argv]);
+				return {
+					done: Promise.resolve({ exitCode: 0, signal: null }),
+					collected: {
+						stdout: { readFrom: () => ({ text: "Done", nextOffset: 0, lossy: false }) },
+						stderr: { readFrom: () => ({ text: "", nextOffset: 0, lossy: false }) },
+					},
+				};
+			},
+		};
+		try {
+			const { route } = mount(root, fakeRegistry(), sub);
+			const { promise, res } = fakeRes();
+			await route.handler(fakeReq("POST", "/plugins/dsh-plugin-dashboard/api/upgrade-all", { apply: true }), res);
+			const { status, body } = await promise;
+			expect(status).toBe(200);
+			expect(body).toMatchObject({ appliedCount: 2, failedCount: 0 });
+			expect((body as { results: Array<{ name: string; applied: boolean }> }).results.map((r) => [r.name, r.applied])).toEqual([["fx-git", true], ["fx-npm", true]]);
+			expect(spawned).toEqual([
+				["dsh", "plugin", "--profile", "fx", "add", "fx-git@github:example/fx-git#v0.2.0"],
+				["dsh", "plugin", "--profile", "fx", "add", "fx-npm@^1.1.0"],
+			]);
+			const pkg = JSON.parse(await readFile(path.join(root, "fx", "package.json"), "utf8")) as { dependencies: Record<string, string> };
+			expect(pkg.dependencies["fx-npm"]).toBe("^1.1.0");
+			expect(pkg.dependencies["fx-git"]).toBe("github:example/fx-git#v0.2.0");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
 	test("unknown package rejected with 400", async () => {
 		const root = await fixtureProfile();
 		try {

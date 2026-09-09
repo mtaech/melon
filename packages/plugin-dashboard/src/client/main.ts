@@ -62,6 +62,24 @@ export interface UpgradePlanDto {
 	error?: string;
 }
 
+export interface UpgradeAllPlanDto {
+	items: UpgradePlanDto[];
+	skipped: Array<{ name: string; reason: string }>;
+}
+
+export interface UpgradeAllResultItemDto {
+	name: string;
+	applied: boolean;
+	log: string[];
+	error?: string;
+}
+
+export interface UpgradeAllResultDto {
+	results: UpgradeAllResultItemDto[];
+	appliedCount: number;
+	failedCount: number;
+}
+
 type TabProps = PropsRuntime<"settings.plugins.tab"> & InjectFace<DashboardTabInjected>;
 
 export interface UninstallPlanDto {
@@ -77,6 +95,8 @@ interface DashboardTabInjected {
 	list: () => Promise<{ dshRunning: boolean; plugins: PluginEntryDto[] }>;
 	plan: (name: string) => Promise<UpgradePlanDto>;
 	apply: (name: string, plan: UpgradePlanDto) => Promise<{ applied: boolean; log: string[]; error?: string }>;
+	planAll: () => Promise<UpgradeAllPlanDto>;
+	applyAll: () => Promise<UpgradeAllResultDto>;
 	uninstall: (name: string, apply: boolean) => Promise<{ plan?: UninstallPlanDto; applied: boolean; log: string[]; error?: string }>;
 	disable: (name: string, apply: boolean) => Promise<{ plan?: DisablePlanDto; applied: boolean; log?: string[]; error?: string }>;
 	enable: (name: string, apply: boolean) => Promise<{ plan?: EnablePlanDto; applied: boolean; log?: string[]; error?: string }>;
@@ -223,6 +243,14 @@ interface ToggleModalState {
 	done: boolean;
 }
 
+interface BulkState {
+	plan: UpgradeAllPlanDto | null;
+	result: UpgradeAllResultDto | null;
+	busy: boolean;
+	done: boolean;
+	error: string | null;
+}
+
 const EMPTY_MODAL: ModalState = { entry: undefined as unknown as PluginEntryDto, plan: null, log: [], busy: false, done: false };
 
 function DashboardTab(props: TabProps): React.ReactElement {
@@ -234,6 +262,7 @@ function DashboardTab(props: TabProps): React.ReactElement {
 	const [open, setOpen] = useState(false);
 	const [uninstallState, setUninstallState] = useState<{ entry: PluginEntryDto; plan: UninstallPlanDto | null; log: string[]; busy: boolean; done: boolean } | null>(null);
 	const [toggleState, setToggleState] = useState<ToggleModalState | null>(null);
+	const [bulk, setBulk] = useState<BulkState | null>(null);
 	const [query, setQuery] = useState("");
 
 	const reload = (): void => {
@@ -285,6 +314,7 @@ function DashboardTab(props: TabProps): React.ReactElement {
 	const visible = q
 		? entries.filter((e) => e.name.toLocaleLowerCase().includes(q) || (e.description ?? "").toLocaleLowerCase().includes(q))
 		: entries;
+	const upgradable = entries.filter((e) => e.upgradeable);
 
 	const close = (): void => setOpen(false);
 
@@ -346,6 +376,25 @@ function DashboardTab(props: TabProps): React.ReactElement {
 		reload();
 	};
 
+	const openBulk = (): void => {
+		setBulk({ plan: null, result: null, busy: true, done: false, error: null });
+		props.planAll()
+			.then((plan) => setBulk((b) => (b ? { ...b, plan, busy: false } : b)))
+			.catch((e: Error) => setBulk((b) => (b ? { ...b, busy: false, error: e.message } : b)));
+	};
+
+	const doApplyAll = (): void => {
+		setBulk((b) => (b ? { ...b, busy: true } : b));
+		props.applyAll()
+			.then((result) => setBulk((b) => (b ? { ...b, result, busy: false, done: true } : b)))
+			.catch((e: Error) => setBulk((b) => (b ? { ...b, busy: false, error: e.message } : b)));
+	};
+
+	const closeBulk = (): void => {
+		setBulk(null);
+		reload();
+	};
+
 	return React.createElement(
 		"div",
 		null,
@@ -358,6 +407,12 @@ function DashboardTab(props: TabProps): React.ReactElement {
 				React.createElement("input", { style: { ...S.search, border: "none", padding: 0, flex: 1, minWidth: 0, background: "transparent", outline: "none" }, placeholder: "搜索插件…", value: query, onChange: (e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value) }),
 				query ? React.createElement("button", { style: S.clear, onClick: () => setQuery(""), title: "清除搜索", type: "button" }, "×") : null,
 			),
+			React.createElement("button", {
+				style: { ...S.btn, ...S.btnPrimary, ...(upgradable.length > 0 && !loading ? {} : S.btnDisabled) },
+				disabled: upgradable.length === 0 || loading,
+				onClick: openBulk,
+				title: upgradable.length > 0 ? `升级 ${upgradable.length} 个插件到最新版本` : "没有可升级的插件",
+			}, `全部更新${upgradable.length > 0 ? `（${upgradable.length}）` : ""}`),
 			React.createElement("button", { style: S.btn, onClick: reload }, "刷新"),
 		),
 		loading
@@ -370,6 +425,7 @@ function DashboardTab(props: TabProps): React.ReactElement {
 		open ? React.createElement(UpgradeModal, { modal, onClose: close, onApply: doApply }) : null,
 		uninstallState ? React.createElement(UninstallModal, { state: uninstallState, onClose: closeUninstall, onApply: doUninstall }) : null,
 		toggleState ? React.createElement(ToggleModal, { state: toggleState, onClose: closeToggle, onApply: doToggle }) : null,
+		bulk ? React.createElement(BulkUpgradeModal, { state: bulk, onClose: closeBulk, onApply: doApplyAll }) : null,
 	);
 }
 
@@ -449,6 +505,58 @@ function UpgradeModal({ modal, onClose, onApply }: { modal: ModalState; onClose:
 	);
 }
 
+function BulkUpgradeModal({ state, onClose, onApply }: { state: BulkState; onClose: () => void; onApply: () => void }): React.ReactElement {
+	const plan = state.plan;
+	const result = state.result;
+	const items = plan?.items ?? [];
+	const skipped = plan?.skipped ?? [];
+	const canApply = plan != null && items.length > 0 && !state.busy && !state.done && !state.error;
+	const rows: Array<[string, React.ReactNode]> = [];
+	if (plan) {
+		rows.push(["待更新", items.length > 0
+			? items.map((p) => `${p.name} ${(p.installedVersion ?? short(p.installedCommit)) || "—"} → ${p.targetLabel}`).join("；")
+			: "（没有可升级的插件）"]);
+		if (skipped.length > 0) rows.push(["已跳过", skipped.map((s) => `${s.name}（${s.reason}）`).join("；")]);
+		rows.push(["执行方式", "按顺序逐个执行 dsh plugin add；单个失败不影响其余插件"]);
+	}
+	if (result) rows.push(["结果", `成功 ${result.appliedCount} 个${result.failedCount > 0 ? `，失败 ${result.failedCount} 个` : ""}`]);
+	if (state.error) rows.push(["错误", state.error]);
+
+	const logLines: string[] = [];
+	if (result) {
+		for (const r of result.results) {
+			logLines.push(`${r.applied ? "✓" : "✗"} ${r.name}${r.error ? `：${r.error}` : ""}`);
+			for (const line of r.log.slice(-6)) logLines.push(`    ${line}`);
+		}
+	}
+
+	return React.createElement("div", { style: S.modalWrap, onClick: onClose },
+		React.createElement("div", { style: S.modal, onClick: (e: React.MouseEvent) => e.stopPropagation() },
+			React.createElement("div", { style: S.modalHead }, "全部更新"),
+			React.createElement("div", { style: S.modalBody },
+				state.busy && !plan
+					? React.createElement("div", { style: S.empty }, "查询可升级的插件…")
+					: React.createElement("dl", { style: S.plan },
+						...rows.flatMap(([k, v]) => [
+							React.createElement("dt", { key: k + "-k", style: S.planDt }, k),
+							React.createElement("dd", { key: k + "-v", style: S.planDd }, v),
+						]),
+					),
+				logLines.length > 0 ? React.createElement("pre", { style: S.log }, logLines.join("\n")) : null,
+			),
+			React.createElement("div", { style: S.modalFoot },
+				React.createElement("button", { style: S.btn, onClick: onClose }, state.done ? "关闭" : "取消"),
+				React.createElement("button", {
+					style: { ...S.btn, ...S.btnPrimary, ...(canApply ? {} : S.btnDisabled) },
+					disabled: !canApply,
+					onClick: onApply,
+					title: canApply ? "" : items.length === 0 ? "没有可升级的插件" : "",
+				}, state.busy && plan ? `正在更新 ${items.length} 个插件…` : state.done ? "已应用 ✓ 请重启 dsh" : "确认全部更新"),
+			),
+		),
+	);
+}
+
 /** Services the browser plugin needs: the slots registry (settings tab contribution). */
 export const inject = ["slots"];
 
@@ -472,6 +580,18 @@ export function apply(ctx: ClientContext): void {
 		if (!res.ok) throw new Error(body.error ?? `upgrade failed (${res.status})`);
 		return body;
 	};
+	const planAll = async (): Promise<UpgradeAllPlanDto> => {
+		const res = await fetch(`${api}/upgrade-all`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({}) });
+		const body = (await res.json()) as { plan: UpgradeAllPlanDto } & { error?: string };
+		if (!res.ok) throw new Error(body.error ?? `plan all failed (${res.status})`);
+		return body.plan;
+	};
+	const applyAll = async (): Promise<UpgradeAllResultDto> => {
+		const res = await fetch(`${api}/upgrade-all`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ apply: true }) });
+		const body = (await res.json()) as UpgradeAllResultDto & { error?: string };
+		if (!res.ok) throw new Error(body.error ?? `upgrade all failed (${res.status})`);
+		return body;
+	};
 	const uninstall = async (name: string, applyNow: boolean): Promise<{ plan?: UninstallPlanDto; applied: boolean; log: string[]; error?: string }> => {
 		const res = await fetch(`${api}/uninstall`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name, apply: applyNow }) });
 		const body = (await res.json()) as { plan?: UninstallPlanDto; applied: boolean; log: string[]; error?: string } & { error?: string };
@@ -490,7 +610,7 @@ export function apply(ctx: ClientContext): void {
 		if (!res.ok) throw new Error(body.error ?? `enable failed (${res.status})`);
 		return body;
 	};
-	const injected = (): DashboardTabInjected => ({ list, plan, apply, uninstall, disable, enable });
+	const injected = (): DashboardTabInjected => ({ list, plan, apply, planAll, applyAll, uninstall, disable, enable });
 
 	if (!ctx.slots) return;
 	ctx.slots.inject("settings.plugins.tab", () =>

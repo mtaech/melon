@@ -269,6 +269,46 @@ export function apply(ctx: Context, options: HostOptions = {}): () => void {
 				json(res, 200, { plan, applied: true, backupPath: applied.backupPath, log: splitLog(applied.output) });
 				return;
 			}
+			if (req.method === "POST" && pathname === `${ROUTE_PREFIX}/upgrade-all`) {
+				const body = JSON.parse((await readBody(req)) || "{}") as { apply?: boolean };
+				const profile = await readProfileDir(profileDir);
+				const lockText = await fs.readFile(path.join(profile.dir, "pnpm-lock.yaml"), "utf8").catch(() => "");
+				const names = [...new Set([...Object.keys(profile.dependencies), ...profile.bundles])].sort();
+				const items: UpgradePlan[] = [];
+				const skipped: Array<{ name: string; reason: string }> = [];
+				for (const name of names) {
+					if (isCorePackage(name)) continue;
+					const specifier = profile.dependencies[name];
+					// Mounted-but-not-declared entries have no specifier to re-resolve.
+					if (!specifier) continue;
+					const source = sourceOf(specifier);
+					if (source === "local" || source === "unknown") continue;
+					const installed = await readInstalled(profile.dir, name);
+					const installedCommit = readLockCommit(lockText, name);
+					const plan = await planUpgrade(profile, name, registry, installed, installedCommit);
+					if (plan.error) skipped.push({ name, reason: plan.error });
+					else if (!plan.wouldChange) skipped.push({ name, reason: "已是最新" });
+					else items.push(plan);
+				}
+				if (!body.apply) {
+					json(res, 200, { plan: { items, skipped } });
+					return;
+				}
+				const results: Array<{ name: string; applied: boolean; log: string[]; error?: string }> = [];
+				// Sequential by design: one dsh plugin add per package, and a failure
+				// leaves the already-applied upgrades in place instead of rolling all back.
+				for (const plan of items) {
+					try {
+						const applied = await applyUpgrade(profile.dir, plan, runner);
+						results.push({ name: plan.name, applied: true, log: splitLog(applied.output) });
+					} catch (error) {
+						results.push({ name: plan.name, applied: false, log: [], error: error instanceof Error ? error.message : String(error) });
+					}
+				}
+				const appliedCount = results.filter((r) => r.applied).length;
+				json(res, 200, { results, appliedCount, failedCount: results.length - appliedCount });
+				return;
+			}
 			if (req.method === "POST" && pathname === `${ROUTE_PREFIX}/disable`) {
 				const body = JSON.parse((await readBody(req)) || "{}") as { name?: string; apply?: boolean };
 				if (!body.name) {

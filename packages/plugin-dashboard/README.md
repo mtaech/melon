@@ -7,6 +7,7 @@ DSH 插件管理面板，**嵌入 dsh Web 设置**：Settings → Plugins 新增
 - **版本清单**：读当前 profile 的 `package.json`（dependencies + `dsh.profile.bundles`）、`node_modules/*/package.json`（已装版本）、`pnpm-lock.yaml`（github 安装解析到的 40 位 commit）。
 - **最新版本**：全部走 dsh 进程自带的 node 运行时（`fetch`，零子进程）——npm 包查询 registry 的 `/<pkg>/latest`（dist-tag `latest`，尊重 `npm_config_registry`）；github 安装（`github:user/repo`）查 GitHub REST API `/tags` + `/commits/HEAD`，取最高 semver tag（无 tag 用 HEAD）；支持 `GITHUB_TOKEN` 环境变量提额；远端 4xx/不可达 → 该条目降级为「未知」并显示原因，不影响其它条目。
 - **升级**：preview 先展示 当前→目标 / 新 specifier / 可复制命令；应用时备份 `package.json`（`.dshbak-*`）、改写 specifier（npm 保 range 风格 `^`/`~`；git 包 pin 到 `#<tag>` 或 `#<commit>`）、经 **`ctx.subprocess`** 跑 dsh 原生命令 `dsh plugin --profile <name> add <pkg>@<版本>`（bounded collect 输出），失败自动回滚。
+- **全部更新**：头部「全部更新」按钮先列出所有可升级插件（当前 → 目标）与跳过原因，确认后按顺序逐个执行 `dsh plugin add`；单个失败不回滚已完成的更新，结果逐条回报，完成后重启 dsh 生效。
 - **禁用/启用**：按 loader 树里该插件贡献的行（`options.name` 归属、带文件 id）向 profile 的 `cordis.patch.yml` 追加 `disabled: true` 的 id-targeted 补丁（`patchReload: live` 的 profile 即时热生效，`startup` 重启后生效）——不动 `dsh.profile.bundles`/`dependencies`，包保持安装、`dsh plugin` reconcile 不会复读它；启用则整块移除（写入前备份 `.dshbak-*`）。core 包拒绝禁用。
 - **卸载**：从 `dependencies`（`ctx.subprocess` 跑 `dsh plugin --profile <name> remove <pkg>`）与 `dsh.profile.bundles` 中一并移除；**core 包（`@deepseek-ai/*`、`@deepseek-harness-tui/*`）拒绝卸载**；未知包报错；同样带备份与失败回滚。
 - **stale 与并发**：升级前对当前文件重新计算，counts 与 staged 不一致拒绝；升级/卸载串行执行。
@@ -41,7 +42,7 @@ dsh --profile <你的 profile> --dump-config | grep dsh-plugin-dashboard
 
 ### 工作原理
 
-- **node 面**（`exports "."`）：cordis 插件，注入 dsh 原生的 `webServer` + `subprocess` 服务——`ctx.webServer.register` 挂 `prefix` 路由 `/plugins/dsh-plugin-dashboard/api`（`/list`、`/upgrade`、`/uninstall`），**零裸 `child_process`**：命令执行全部经 `ctx.subprocess.spawn`（树级终止、bounded collect），版本查询用 node 运行时自带 `fetch`（dsh 的 node，无额外进程）。dsh 进程的 cwd 就是 profile 目录，所有读写都针对它。
+- **node 面**（`exports "."`）：cordis 插件，注入 dsh 原生的 `webServer` + `subprocess` 服务——`ctx.webServer.register` 挂 `prefix` 路由 `/plugins/dsh-plugin-dashboard/api`（`/list`、`/upgrade`、`/upgrade-all`、`/uninstall`），**零裸 `child_process`**：命令执行全部经 `ctx.subprocess.spawn`（树级终止、bounded collect），版本查询用 node 运行时自带 `fetch`（dsh 的 node，无额外进程）。dsh 进程的 cwd 就是 profile 目录，所有读写都针对它。
 - **浏览器面**（`exports "./client"`）：esbuild 打包成 `window.__ModuleLoader__.load({ id, factory })` lazy-CJS factory（脚本 `scripts/build-client.mjs`）。**ModuleLoader 契约有三个硬约束**：factory 只接收 `require` 且必须 `return module.exports`（`<script>` 环境无 module/exports，需在 factory 体内自声明 `var module = { exports: {} }; var exports = module.exports;`）；entry 导出需 `treeShaking: false` 防止 `export const inject` 被内联删除；模块必须真实 `export const inject`（声明服务注入，运行时经此拿 `ctx.slots`）。组件用 `React.createElement` 手写（零 JSX）；`react` 及 `@deepseek-ai/*` 全部 external，从平台模块表解析；`dsh.client.inject` 元数据同时提供给 shell 的注入装配。
 - **client→host 通信**：浏览器直接 `fetch` 同源 `/plugins/dsh-plugin-dashboard/api/*`——走 `ctx.webServer` 路由，不依赖 typert Remote 装配（那条路需要进 dsh 主仓库 `api/remotes` 静态登记）。
 
