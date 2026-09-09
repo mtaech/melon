@@ -1,6 +1,6 @@
 {
 	"name": "dsh-skin-material-you",
-	"version": "0.1.3",
+	"version": "0.1.4",
 	"description": "Material You (Material 3) skin for DeepSeek Harness: HCT tonal palette + Maple Mono NF CN typography",
 	"type": "module",
 	"main": "lib/index.js",

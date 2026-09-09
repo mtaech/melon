@@ -118,10 +118,17 @@ Regular/Medium/Bold：
   font-family: 'Maple Mono NF CN';
   font-style: normal;
   font-weight: 100 800;
-  src: url('../fonts/MapleMono-NF-CN-Regular.woff2') format('woff2');
+  src: url('/dsh-skin-material-you/fonts/MapleMono-NF-CN-Regular.woff2') format('woff2');
   font-display: swap;
 }
 ```
+
+> ⚠️ **字体 URL 为什么是绝对路径**：皮肤把 `@font-face` 作为内联 `<style>` 注入页面，
+> 相对路径 `../fonts/...` 会按页面根路径（`http://127.0.0.1:<port>/fonts/...`）解析而 404
+> 始终加载失败；`/plugins` 前缀路由又只 serve 预组装的 `client.js`/`.map`，不提供包内
+> 任意静态文件。所以 host 半（`src/index.js`）注册了 `/dsh-skin-material-you` 前缀路由，
+> 从包内 `fonts/` 目录 serve 字体，`fonts.css` 用绝对路径引用它。改动 host 半后需
+> **重启 `dsh web`** 才会挂上该路由（皮肤 client 半改动刷新即生效）。
 
 > 如需更忠实的 Medium/Bold 字重，把对应 TTF 用 fontTools 转 woff2 放入 `fonts/`
 > 并补对应 `@font-face` 规则（每份约 6MB）。
@@ -146,7 +153,7 @@ packages/skin-material-you/   # melon 单仓库中的一个包
 │   ├── sidebar.css     # 侧栏工作区列表精修（分组分隔 / 树状引导线 / 选中 tonal pill）
 │   ├── client.js       # 源版插件体（apply/overrideTokens/register/注入 CSS）
 │   ├── client.d.ts
-│   └── index.js / index.d.ts   # host 入口（no-op 插件，构建时复制进 lib/）
+│   └── index.js / index.d.ts   # host 入口：注册 /dsh-skin-material-you 路由 serve fonts/（构建时复制进 lib/）
 ├── scripts/
 │   └── smoke.mjs       # 按 web shell 方式加载 lib/client.js，驱动 apply/dispose
 └── lib/       # 构建产物（DSH 实际加载）——不入版本控制，由 build.mjs 产出

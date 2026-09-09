@@ -16,7 +16,7 @@
   font-family: 'Maple Mono NF CN';
   font-style: normal;
   font-weight: 100 800; /* variable-ish range: let every weight resolve here */
-  src: url('../fonts/MapleMono-NF-CN-Regular.woff2') format('woff2');
+  src: url('/dsh-skin-material-you/fonts/MapleMono-NF-CN-Regular.woff2') format('woff2');
   font-display: swap;
 }
 
