@@ -64,6 +64,12 @@
   margin-bottom: 6px;
 }
 
+/* 展开卡片里的工作区标题行也提到 44px：会话行 40px，标题必须比会话高，
+ * 否则层级倒挂（会话比所属工作区还显眼）。 */
+[class*="treeBody"] [class*="groupSection"]:has([class*="sessionRow"]) [class*="projectRow"] {
+  min-height: 44px;
+}
+
 /* ---- 工作区行：分组锚点，字重略重 ------------------------------------------ */
 
 [class*="treeBody"] [class*="projectRow"] {
@@ -90,6 +96,8 @@
 [class*="treeBody"] [class*="sessionRow"] {
   position: relative;
   margin-left: 22px;
+  /* 原生 32px 偏挤，提到 40px（仍低于工作区标题的 44px，保持层级） */
+  min-height: 40px;
   border-radius: var(--m3-shape-small, 8px);
 }
 
