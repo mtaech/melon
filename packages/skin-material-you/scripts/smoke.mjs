@@ -62,6 +62,8 @@ check("injected a style tag", styleTags.length === 0, `${styleTags.length} left 
 check("disposes every registration", disposed.length === 3, disposed.join(", "));
 check("no stale @deepseek-ai scope refs", !source.includes("@deepseek-ai/dsh-skin-material-you"));
 check("font url is an absolute /plugins-independent path", source.includes("/dsh-skin-material-you/fonts/MapleMono-NF-CN-Regular.woff2"));
+check("client bundle inlines the sidebar enrichment", source.includes("function enhanceSidebarWorkspaces") && source.includes("/dsh-skin-material-you/api/workspaces"));
+check("sidebar enrichment is mounted in apply", source.includes("enhanceSidebarWorkspaces()"));
 
 // ---- Host half: the font route must actually serve the bundled font ----
 const host = await import("../lib/index.js");
@@ -110,6 +112,20 @@ check("font route 404s missing files", missRes._state.status === 404, String(mis
 const postRes = fakeRes();
 capturedRoute.handler(fakeReq("POST", "/dsh-skin-material-you/fonts/MapleMono-NF-CN-Regular.woff2"), postRes);
 check("font route rejects POST", postRes._state.status === 405, String(postRes._state.status));
+
+// 3) workspace metadata route: JSON shape, tolerant of a missing store
+const wsRes = fakeRes();
+capturedRoute.handler(fakeReq("GET", "/dsh-skin-material-you/api/workspaces"), wsRes);
+check("workspaces route returns 200", wsRes._state.status === 200, String(wsRes._state.status));
+check("workspaces route is JSON", String(wsRes._state.headers["content-type"]).startsWith("application/json"), wsRes._state.headers["content-type"]);
+let wsBody = null;
+try { wsBody = JSON.parse(wsRes._state.body); } catch { /* reported below */ }
+check("workspaces route body has a workspaces array", Array.isArray(wsBody?.workspaces), JSON.stringify(wsBody)?.slice(0, 80));
+const wsShapeOk = (wsBody?.workspaces ?? []).every((w) => typeof w.title === "string" && typeof w.path === "string" && typeof w.sessions === "number");
+check("workspace rows carry title/path/sessions", wsShapeOk, JSON.stringify((wsBody?.workspaces ?? [])[0]));
+const unknownRes = fakeRes();
+capturedRoute.handler(fakeReq("GET", "/dsh-skin-material-you/nope"), unknownRes);
+check("unknown skin route 404s", unknownRes._state.status === 404, String(unknownRes._state.status));
 
 disposer();
 check("disposer unregisters the route", unregistered === true, String(unregistered));

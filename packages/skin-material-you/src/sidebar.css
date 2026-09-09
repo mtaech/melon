@@ -151,3 +151,43 @@
   color: var(--dsw-alias-label-secondary);
   font-size: 12px;
 }
+
+/* ---- 工作区元信息（由 sidebar-enrich.js 注入的 DOM）--------------------------
+ * 行右侧的「会话数 + 最近活动」。原生行只渲染 label，这里补上 host 工作区
+ * 存储里的事实。元素由 JS 注入，所以样式也只服务于注入节点（.dsh-skin-*）。
+ * ------------------------------------------------------------------------- */
+
+[class*="treeBody"] [class*="projectRow"] .dsh-skin-ws-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  margin-left: 8px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 会话数胶囊：等宽数字，避免 1 位/2 位宽度跳动 */
+[class*="treeBody"] [class*="projectRow"] .dsh-skin-ws-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--m3-shape-full, 999px);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
+  font-weight: 560;
+}
+
+/* 最近活动：比胶囊更弱，纯说明文字 */
+[class*="treeBody"] [class*="projectRow"] .dsh-skin-ws-time {
+  white-space: nowrap;
+}
+
+/* hover 时操作按钮（⋯ +）在同一位置出现，元信息让位 */
+[class*="treeBody"] [class*="projectRow"]:hover .dsh-skin-ws-meta {
+  display: none;
+}

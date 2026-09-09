@@ -11,6 +11,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const fontsCss = readFileSync(join(here, 'src/fonts.css'), 'utf8');
 const paletteCss = readFileSync(join(here, 'src/palette.css'), 'utf8');
 const sidebarCss = readFileSync(join(here, 'src/sidebar.css'), 'utf8');
+const enrichJs = readFileSync(join(here, 'src/sidebar-enrich.js'), 'utf8');
 const styleCss = fontsCss + '\n' + paletteCss + '\n' + sidebarCss;
 mkdirSync(join(here, 'lib'), { recursive: true });
 
@@ -41,6 +42,9 @@ const bundle = `window.__ModuleLoader__.load({
 			return () => { tag.remove(); };
 		}
 
+		// ---- inlined sidebar info enrichment (fetches the host workspaces route) ----
+${enrichJs}
+
 		function tokensFor(tokens, scheme) {
 			const out = {};
 			for (const name of Object.keys(tokens)) out[name] = tokens[name][scheme];
@@ -52,8 +56,9 @@ const bundle = `window.__ModuleLoader__.load({
 			const disposeStyles = injectSkinStyles();
 			const disposeLight = ctx.theme.register({ id: 'material-you-light', colorScheme: 'light', tokens: tokensFor(materialYouTokens, 'light') });
 			const disposeDark = ctx.theme.register({ id: 'material-you-dark', colorScheme: 'dark', tokens: tokensFor(materialYouTokens, 'dark') });
+			const disposeEnrich = enhanceSidebarWorkspaces();
 			ctx.effect(() => {
-				return () => { disposeOverride(); disposeLight(); disposeDark(); if (disposeStyles) disposeStyles(); };
+				return () => { disposeOverride(); disposeLight(); disposeDark(); disposeEnrich(); if (disposeStyles) disposeStyles(); };
 			}, "dsh-skin-material-you: dispose");
 		}
 

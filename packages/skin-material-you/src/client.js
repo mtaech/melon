@@ -52,6 +52,9 @@ export function apply(ctx) {
     tokens: tokensFor(materialYouTokens, 'dark'),
   });
 
+  // NOTE: the shipped bundle is hand-assembled by build.mjs, which also inlines
+  // src/sidebar-enrich.js and mounts it here. This source file is the readable
+  // reference for the bundle's shape, not its build input.
   ctx.effect(() => {
     return () => {
       disposeOverride();
