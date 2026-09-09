@@ -38,7 +38,10 @@
 }
 
 [class*="treeBody"] [class*="groupSection"]:has([class*="sessionRow"]) {
-  background: var(--dsw-alias-bg-layer-1);
+  /* 品牌色 tonal 卡片：中性 surface 在侧栏底色上几乎看不见，
+   * 用 brand 6% 底 + 22% 描边让展开分组有足够的存在感 */
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-brand-primary) 22%, transparent);
   border-radius: var(--m3-shape-medium, 12px);
   padding: 4px;
   margin-top: 6px;
