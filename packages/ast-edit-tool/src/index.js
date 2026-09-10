@@ -252,7 +252,7 @@ async function doPreview(args, ops, exec, config, cwd, sessionId) {
         stagedId: entry.id,
         message,
         changes,
-        parseErrors: mergedErrors.length ? mergedErrors.slice(0, PARSE_ERRORS_LIMIT) : undefined,
+        parseErrors: mergedErrors.slice(0, PARSE_ERRORS_LIMIT),
     };
 }
 async function doApply(args, _ops, exec, config, cwd, sessionId) {

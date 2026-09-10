@@ -46,6 +46,27 @@ async function fixture(content: string): Promise<{ dir: string; file: string }> 
 
 const OPS = [{ pat: "foo($A)", out: "bar($A)" }];
 
+/**
+ * Mirror of DSH lossless-JSON rule: an own property whose value is
+ * undefined (or a sparse array) makes a value not losslessly
+ * JSON-serializable, and dsh-tools rejects such tool output.
+ */
+function isLosslessJson(value: unknown): boolean {
+	if (value === null || typeof value !== "object") return true;
+	if (Array.isArray(value)) {
+		for (let i = 0; i < value.length; i++) {
+			if (!(i in value)) return false;
+			if (!isLosslessJson(value[i])) return false;
+		}
+		return true;
+	}
+	for (const key of Object.keys(value)) {
+		const item = (value as Record<string, unknown>)[key];
+		if (item === undefined || !isLosslessJson(item)) return false;
+	}
+	return true;
+}
+
 describe("ast_edit plugin", () => {
 	test("preview stages without touching files; apply writes them", async () => {
 		const { dir, file } = await fixture("const r = foo(1);\n");
@@ -71,6 +92,19 @@ describe("ast_edit plugin", () => {
 			expect(applied.applied).toBe(true);
 			expect(applied.totalReplacements).toBe(1);
 			expect(await readFile(file, "utf8")).toBe("const r = bar(1);\n");
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
+	});
+
+	test("preview output is lossless JSON (no undefined-valued properties)", async () => {
+		const { dir, file } = await fixture("const r = foo(1);\n");
+		const { tool } = harness();
+		const exec = await sessionExec(dir);
+		try {
+			const preview = (await tool.execute({ ops: OPS, paths: [file], action: "preview" }, exec)) as Record<string, unknown>;
+			expect(isLosslessJson(preview)).toBe(true);
+			expect(Array.isArray(preview.parseErrors)).toBe(true);
 		} finally {
 			await rm(dir, { recursive: true, force: true });
 		}

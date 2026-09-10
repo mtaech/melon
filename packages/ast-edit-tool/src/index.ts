@@ -292,7 +292,7 @@ async function doPreview(args: AstEditArgs, ops: ResolvedOp[], exec: ToolRunCont
 		stagedId: entry.id,
 		message,
 		changes,
-		parseErrors: mergedErrors.length ? mergedErrors.slice(0, PARSE_ERRORS_LIMIT) : undefined,
+		parseErrors: mergedErrors.slice(0, PARSE_ERRORS_LIMIT),
 	};
 }
 
