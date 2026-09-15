@@ -1,6 +1,6 @@
 {
 	"name": "dsh-worksop-plus",
-	"version": "0.1.7",
+	"version": "0.1.8",
 	"description": "DSH web plugin: enhanced workspace panel — pin, groups, hide, filter and bulk actions for the session sidebar",
 	"type": "module",
 	"license": "MIT",

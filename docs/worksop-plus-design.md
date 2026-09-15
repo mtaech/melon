@@ -22,7 +22,7 @@
 
 M2 也已落地（0.1.3）：**多选整理**（批量置顶/取消/移入分组/隐藏/全选）、**拖拽**（拖入分组、置顶排序、分组重排）、**分组 emoji**、**配置导入导出**、**置顶同步到宿主顺序**、**会话重命名**。排序数学被抽成 `derive.js` 的 `moveIdBefore` / `hostOrderWithPinned` 纯函数并单测覆盖。
 
-**状态可见性**（未发版）：`useSessionPendingInteraction`（槽位标准 prop）+ 系统同源的 `StateDot` 提供状态点；纯函数层把 pending/running/completed 聚合到**工作区**与**分区**两级（`sectionStatus`），因此折叠的桶也会显示「有会话等你 / 在跑 / 有未查看完成」，含同类计数与紧急度排序（approval > question > plan-review）。
+**状态可见性**（0.1.8）：`useSessionPendingInteraction`（槽位标准 prop）+ 系统同源的 `StateDot` 提供状态点；纯函数层把 pending/running/completed 聚合到**工作区**与**分区**两级（`sectionStatus`），因此折叠的桶也会显示「有会话等你 / 在跑 / 有未查看完成」，含同类计数与紧急度排序（approval > question > plan-review）。
 
 **未分组/已隐藏可折叠**（0.1.7）：`prefs` 新增 `ungroupedCollapsed` / `hiddenCollapsed`（schema 加字段带默认值，旧文档照常通过校验），四个桶的折叠状态都持久化；`folded = collapsed` 让 chip 化规则覆盖所有桶。折叠是显示层行为——成员、计数、`assign` 都不动（有单测固定这一点）。
 
@@ -32,9 +32,9 @@ M2 也已落地（0.1.3）：**多选整理**（批量置顶/取消/移入分组
 
 **chip 行定宽**（0.1.4）：分组数量与筛选行宽度解耦——一行永远是 `全部 / ★置顶 / 分组 ▾ / +`，分组名进下拉菜单（带计数、勾选）；无分组时不出现该 chip。批量条的「完成」固定在滚动区之外，窄栏下也不会退不出多选。
 
-**M3 完成**（未发版）：分组内**手动排序**（schema 新增 `order` 映射，`applyStoredOrder` 保序并把新成员追加到尾部；顺带修掉「置顶区未按 `pinned` 数组排序」的 M2 遗留）、**拖拽插入指示线**（按落点半程决定 before/after）、**宿主内容搜索**（`sessions.search` + 防抖取消 + 内容匹配分区 + 去重基准改为**可见树**）、**子代理 lineage**（`runningSubagentCounts` 汇总到父行，子代理不再占顶层行）、**工作区右键菜单**；搜索期间空分区自动收起。
+**M3 完成**（0.1.8）：分组内**手动排序**（schema 新增 `order` 映射，`applyStoredOrder` 保序并把新成员追加到尾部；顺带修掉「置顶区未按 `pinned` 数组排序」的 M2 遗留）、**拖拽插入指示线**（按落点半程决定 before/after）、**宿主内容搜索**（`sessions.search` + 防抖取消 + 内容匹配分区 + 去重基准改为**可见树**）、**子代理 lineage**（`runningSubagentCounts` 汇总到父行，子代理不再占顶层行）、**工作区右键菜单**；搜索期间空分区自动收起。
 
-**M3 收尾（未发版）**：会话级拖拽排序（宿主持久化）、每工作区 5 条 + 展开更多、扁平列表视图、活跃定时任务图标、会话 fork、应用内目录浏览器、菜单换成产品 `Menu`（缺失时回退自带 popup）、rail 打磨（置顶项 + 状态徽标 + 点开即展开）。上游 additive 槽的提议已成文：`docs/upstream-additive-slots-proposal.md`。
+**M3 收尾**（0.1.8）：会话级拖拽排序（宿主持久化）、每工作区 5 条 + 展开更多、扁平列表视图、活跃定时任务图标、会话 fork、应用内目录浏览器、菜单换成产品 `Menu`（缺失时回退自带 popup）、rail 打磨（置顶项 + 状态徽标 + 点开即展开）。上游 additive 槽的提议已成文：`docs/upstream-additive-slots-proposal.md`。
 
 ### 规划中仍未完成
 
