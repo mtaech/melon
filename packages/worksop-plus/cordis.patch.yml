@@ -1,0 +1,10 @@
+# dsh bundle patch: inserts this plugin into a profile's layer stack.
+#
+# Host half (exports ".") registers the durable `worksop-plus` settings
+# namespace; the `dsh.client` declaration in package.json loads the browser half
+# (exports "./client") in the web GUI, where it takes over the sidebar's
+# `sidebar.workspaces` region at priority -1 (the shipped browser stays on the
+# slot ledger and returns the moment this plugin is stopped).
+- insert:
+    - id: worksop-plus
+      name: 'dsh-worksop-plus'
