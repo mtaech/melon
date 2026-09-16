@@ -106,6 +106,40 @@ describe("managed block file I/O", () => {
 		expect(removeDisableBlock(withBlock, "p")).toBe(original);
 	});
 
+	// The scaffolded patch file ends in `[]`; appending after it made the document
+	// both an empty flow sequence and a block sequence, so every later boot died
+	// on "end of the stream or a document separator is expected" (6:1).
+	const TEMPLATE = "# Your patch layer for this dsh profile.\n# entries follow.\n[]\n";
+
+	test("append replaces the scaffolded [] placeholder", () => {
+		const next = appendDisableBlock(TEMPLATE, "p", [ROW]);
+		expect(next.split("\n")).not.toContain("[]");
+		expect(next.startsWith("# Your patch layer for this dsh profile.\n# entries follow.\n")).toBe(true);
+		expect(next).toContain("- id: plugin-dashboard\n  name: dsh-plugin-dashboard\n  disabled: true");
+	});
+
+	test("remove restores the placeholder once the list is empty again", () => {
+		const next = removeDisableBlock(appendDisableBlock(TEMPLATE, "p", [ROW]), "p");
+		expect(next).toBe(TEMPLATE);
+	});
+
+	test("remove keeps other blocks and leaves [] out while entries remain", () => {
+		const withA = appendDisableBlock(TEMPLATE, "plugin-a", [{ id: "a", name: "plugin-a" }]);
+		const both = appendDisableBlock(withA, "plugin-b", [{ id: "b", name: "plugin-b" }]);
+		expect(both.split("\n")).not.toContain("[]");
+		const next = removeDisableBlock(both, "plugin-a");
+		expect(next).toContain("- id: b");
+		expect(next.split("\n")).not.toContain("[]");
+		expect(removeDisableBlock(next, "plugin-b")).toBe(TEMPLATE);
+	});
+
+	test("append onto a placeholder-only file keeps it loadable", () => {
+		const next = appendDisableBlock("[]\n", "p", [ROW]);
+		expect(next).toContain("- id: plugin-dashboard\n  name: dsh-plugin-dashboard\n  disabled: true");
+		expect(next.split("\n")).not.toContain("[]");
+		expect(removeDisableBlock(next, "p")).toBe("[]\n");
+	});
+
 	test("hasDisableBlock / removeDisableBlock reject missing state", () => {
 		expect(hasDisableBlock("# none\n", "p")).toBe(false);
 		expect(() => removeDisableBlock("# none\n", "p")).toThrow("未找到");

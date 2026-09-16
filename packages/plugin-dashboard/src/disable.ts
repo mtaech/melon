@@ -142,6 +142,24 @@ export async function planEnable(profileDir: string, name: string, rows: PluginR
 const BLOCK_START = (pkg: string): string => `# >>> dsh-plugin-dashboard managed: disabled plugin ${pkg}`;
 const BLOCK_END = "# <<< dsh-plugin-dashboard managed";
 
+/** The empty-list placeholder the launcher scaffolds into a fresh patch file. */
+const EMPTY_LIST = "[]";
+
+/**
+ * Whether a line is the scaffolded `[]` placeholder (alone, unindented). Such a
+ * line is a whole YAML document — an empty flow sequence — so it cannot sit
+ * next to block-sequence entries: the loader rejects the file and the profile
+ * fails to boot. It must be replaced, not appended after.
+ */
+function isPlaceholderLine(line: string): boolean {
+	return line === line.trimStart() && line.trimEnd() === EMPTY_LIST;
+}
+
+/** Whether any top-level sequence entry remains, i.e. the list is not empty. */
+function hasEntryLine(lines: string[]): boolean {
+	return lines.some((line) => line.startsWith("- ") || line.trimEnd() === "-");
+}
+
 /** YAML scalar rendering: plain when safe, JSON double-quoted otherwise (`@`:`, spaces…`). */
 function yamlScalar(value: string): string {
 	return /^[A-Za-z0-9_.-]+$/.test(value) ? value : JSON.stringify(value);
@@ -151,7 +169,10 @@ function yamlScalar(value: string): string {
  * Append a managed disable block for `pkg` targeting `rows` ({id, name}) to the
  * given patch-file content. Never re-serializes the rest of the file — the
  * block is delimited by marker comments and removed wholesale on enable, so
- * user content (including `!!js` expressions) is preserved verbatim.
+ * user content (including `!!js` expressions) is preserved verbatim. The
+ * scaffolded `[]` placeholder is dropped on the way: it cannot coexist with
+ * block entries, and {@link removeDisableBlock} restores it once the list is
+ * empty again.
  */
 export function appendDisableBlock(content: string, pkg: string, rows: Array<{ id: string; name: string | null }>): string {
 	if (rows.length === 0) throw new Error("no rows to disable");
@@ -163,8 +184,8 @@ export function appendDisableBlock(content: string, pkg: string, rows: Array<{ i
 	}
 	lines.push(BLOCK_END);
 	const block = lines.join("\n");
-	const base = content.length === 0 || content.endsWith("\n") ? content : `${content}\n`;
-	return `${base}${block}\n`;
+	const base = content.split("\n").filter((line) => !isPlaceholderLine(line)).join("\n");
+	return `${base.length === 0 || base.endsWith("\n") ? base : `${base}\n`}${block}\n`;
 }
 
 /** Exact-line match: a block header for `pkg` (prefix packages like a vs aX must not collide). */
@@ -190,7 +211,11 @@ export function removeDisableBlock(content: string, pkg: string): string {
 	end += 1; // inclusive
 	const next = [...lines.slice(0, start), ...lines.slice(end)].join("\n");
 	// Collapse blank lines the removed block left behind (it was appended at EOF).
-	return next.replace(/\n{3,}/g, "\n\n");
+	const collapsed = next.replace(/\n{3,}/g, "\n\n");
+	// An emptied patch file needs the placeholder back: comments alone parse as
+	// YAML `null`, which the loader rejects as hard as a broken sequence.
+	if (hasEntryLine(collapsed.split("\n"))) return collapsed;
+	return `${collapsed.length === 0 || collapsed.endsWith("\n") ? collapsed : `${collapsed}\n`}${EMPTY_LIST}\n`;
 }
 
 async function readPatchFile(profileDir: string): Promise<string> {
