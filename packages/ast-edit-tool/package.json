@@ -58,8 +58,8 @@
 		"ignore": "^7.0.3"
 	},
 	"peerDependencies": {
-		"@deepseek-ai/dsh-tools": "^0.1.5-alpha.1",
-		"@deepseek-ai/schemastery": "^3.18.2"
+		"@deepseek-ai/dsh-tools": "catalog:",
+		"@deepseek-ai/schemastery": "catalog:"
 	},
 	"peerDependenciesMeta": {
 		"@deepseek-ai/dsh-tools": {

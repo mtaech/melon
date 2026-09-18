@@ -63,10 +63,10 @@
 		"prepublishOnly": "pnpm run build"
 	},
 	"peerDependencies": {
-		"@deepseek-ai/cordis": "^4.0.2",
-		"@deepseek-ai/dsh-client-locale": "^0.1.5-alpha.1",
-		"@deepseek-ai/dsh-client-ui-renderer": "^0.1.5-alpha.1",
-		"@deepseek-ai/dsh-client-ui-theme": "^0.1.5-alpha.1"
+		"@deepseek-ai/cordis": "catalog:",
+		"@deepseek-ai/dsh-client-locale": "catalog:",
+		"@deepseek-ai/dsh-client-ui-renderer": "catalog:",
+		"@deepseek-ai/dsh-client-ui-theme": "catalog:"
 	},
 	"peerDependenciesMeta": {
 		"@deepseek-ai/cordis": {
