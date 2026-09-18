@@ -12,19 +12,32 @@
 export const ATTENTION_ORDER = ['approval', 'question', 'plan-review']
 
 /**
- * Read one Session's pending-interaction kind from the snapshot the
- * `useSessionPendingInteraction` standard prop resolves. Accepts a Map (the
- * live shape) or a plain object (fixtures/tests), and tolerates a bare string.
- * @param pending - pending interactions by Session id.
+ * Read one Session's pending-interaction kind from the snapshot the standard
+ * status prop resolves. Two shells are in the wild: DSH 0.1.5 hands in the
+ * interaction itself (`Map<SessionId, { kind }>`, also accepted as a plain
+ * object or a bare string), while 0.1.6 folded the hook into
+ * `useSessionStatus` and wraps the request one level down
+ * (`Map<SessionId, { pendingInteraction }>`). Both are unwrapped here.
+ * @param pending - pending interactions (or Session statuses) by Session id.
  * @param sessionId - session to look up.
  * @returns the domain kind, or undefined when nothing is pending.
  */
 export function pendingKindOf(pending, sessionId) {
   if (pending === undefined || pending === null) return undefined
   const value = typeof pending.get === 'function' ? pending.get(sessionId) : pending[sessionId]
+  return interactionKind(value)
+}
+
+/**
+ * Unwrap one pending-interaction value into its domain kind.
+ * @param value - interaction, `SessionStatus` wrapper, bare kind, or absence.
+ * @returns the domain kind, or undefined.
+ */
+function interactionKind(value) {
   if (value === undefined || value === null) return undefined
   if (typeof value === 'string') return value
-  return typeof value.kind === 'string' ? value.kind : undefined
+  if (typeof value.kind === 'string') return value.kind
+  return interactionKind(value.pendingInteraction)
 }
 
 /**

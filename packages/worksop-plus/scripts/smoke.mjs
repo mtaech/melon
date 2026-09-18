@@ -136,6 +136,45 @@ check(
   'inject face exposes the baked actions',
   typeof browserFace?.store?.actions?.togglePin === 'function' && typeof browserFace?.store?.actions?.setPrefs === 'function',
 )
+
+// Render guard for the standard-prop roster. DSH 0.1.6 removed
+// `useSessionPendingInteraction` in favour of `useSessionStatus`; calling the
+// absent prop throws during render, and because `sidebar.workspaces` is a
+// shadowing cell the renderer abdicates this entry and silently reverts to the
+// shipped browser. Both rosters must render.
+const rosterProps = (extra) => ({
+  wide: true,
+  expandSidebar: () => {},
+  store: browserFace.store,
+  ui: browserFace.ui,
+  t: (key) => key,
+  useWorkspaces: () => ({ items: [], archivedSessionIds: [] }),
+  useSessions: () => ({ ids: [], byId: {}, current: undefined }),
+  ...extra,
+})
+const renderWith = (props) => {
+  try {
+    return { tree: browser.component(props), error: undefined }
+  } catch (error) {
+    return { tree: undefined, error }
+  }
+}
+const dsh016 = renderWith(rosterProps({
+  useSessionStatus: () => new Map(),
+  useSessionRetainInfo: () => undefined,
+}))
+check(
+  'renders on the DSH 0.1.6 standard-prop roster',
+  dsh016.error === undefined && dsh016.tree !== undefined,
+  String(dsh016.error),
+)
+const dsh015 = renderWith(rosterProps({ useSessionPendingInteraction: () => new Map() }))
+check(
+  'renders on the DSH 0.1.5 standard-prop roster',
+  dsh015.error === undefined && dsh015.tree !== undefined,
+  String(dsh015.error),
+)
+
 const footer = registrations.find((entry) => entry.options.name === 'sidebar.footer.action')
 check('registers the sidebar-foot switch', footer !== undefined)
 check('foot switch id is stable', footer?.options.id === 'worksop-plus')

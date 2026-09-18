@@ -18,8 +18,10 @@
  * guide line, and counts/times sit in fixed pill and column slots.
  *
  * Host contracts consumed (all public client services / standard slot props):
- *   - standard slot props `useWorkspaces` (Host Workspace snapshot) and
- *     `useSessions` (Session list snapshot);
+ *   - standard slot props `useWorkspaces` (Host Workspace snapshot),
+ *     `useSessions` (Session list snapshot), and the Session status feed
+ *     (`useSessionStatus` on DSH ≥ 0.1.6, `useSessionPendingInteraction`
+ *     before that — see `WorksopPlusBrowser`);
  *   - `ctx.slots`, `ctx.locale`, `ctx.settingsScope`;
  *   - `ctx.workspaces` (create/rename/delete), `ctx.uiWorkspace`
  *     (startSession/open/archive/pickDirectory), `ctx.sessions` (open).
@@ -51,6 +53,8 @@ const STYLE_TAG = 'dsh-worksop-plus/style'
 const ALL = 'all'
 const SELECT_SELF = (snapshot) => snapshot
 const h = React.createElement
+/** Fallback for a shell that exposes no Session status feed at all (no dots, everything else works). */
+const absentStatus = () => undefined
 
 const ZH = {
   'section.workspaces': '工作区',
@@ -705,10 +709,21 @@ function timeText(t, updatedAt) {
  * @returns the region element tree.
  */
 function WorksopPlusBrowser(props) {
-  const { wide, expandSidebar, store, ui, useWorkspaces, useSessions, useSessionPendingInteraction, t } = props
+  const {
+    wide, expandSidebar, store, ui, useWorkspaces, useSessions,
+    useSessionStatus, useSessionPendingInteraction, t,
+  } = props
   const workspaceSnapshot = useWorkspaces(SELECT_SELF)
   const sessions = useSessions(SELECT_SELF)
-  const pending = useSessionPendingInteraction(SELECT_SELF)
+  // DSH 0.1.6 folded the pending-interaction standard prop into
+  // `useSessionStatus` (Map<SessionId, SessionStatus>); 0.1.5 exposes the older
+  // `useSessionPendingInteraction`. Read whichever the shell assembled and
+  // never call an absent prop: a throw here abdicates this shadowing entry,
+  // which silently reverts the panel to the shipped browser.
+  const statusHook = (typeof useSessionStatus === 'function' && useSessionStatus)
+    || (typeof useSessionPendingInteraction === 'function' && useSessionPendingInteraction)
+    || absentStatus
+  const pending = statusHook(SELECT_SELF)
   const state = React.useSyncExternalStore(store.subscribe, store.getSnapshot)
   const [query, setQuery] = React.useState('')
   const [searchOpen, setSearchOpen] = React.useState(false)

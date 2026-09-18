@@ -281,6 +281,22 @@ describe('session attention', () => {
     expect(pendingKindOf(undefined, 's-ask')).toBeUndefined()
   })
 
+  // DSH 0.1.6 replaced the `useSessionPendingInteraction` standard prop with
+  // `useSessionStatus`, whose snapshot is Map<SessionId, SessionStatus> and
+  // carries the request one level down at `pendingInteraction`.
+  test('pendingKindOf reads the 0.1.6 SessionStatus wrapper', () => {
+    const status = new Map([
+      ['s-ask', { running: false, pendingInteraction: { kind: 'approval', key: 'k', sessionId: 's-ask' }, completionUnread: false }],
+      ['s-run', { running: true, pendingInteraction: undefined, completionUnread: false }],
+      ['s-done', { running: false, pendingInteraction: undefined, completionUnread: true }],
+    ])
+    expect(pendingKindOf(status, 's-ask')).toBe('approval')
+    expect(pendingKindOf(status, 's-run')).toBeUndefined()
+    expect(pendingKindOf(status, 's-done')).toBeUndefined()
+    expect(pendingKindOf(status, 'missing')).toBeUndefined()
+    expect(pendingKindOf({ 's-ask': { pendingInteraction: { kind: 'question' } } }, 's-ask')).toBe('question')
+  })
+
   test('strongestAttention follows the urgency order', () => {
     expect(strongestAttention(['plan-review', 'approval'])).toBe('approval')
     expect(strongestAttention(['plan-review', 'question'])).toBe('question')
@@ -312,6 +328,18 @@ describe('session attention', () => {
     expect(group.runningCount).toBe(1)
     expect(group.attention).toBe('approval')
     expect(sectionStatus(group)).toMatchObject({ pendingCount: 1, runningCount: 1, completedCount: 1 })
+  })
+
+  test('the 0.1.6 status snapshot drives the same attention roll-up', () => {
+    const status = new Map([
+      ['s-ask', { running: false, pendingInteraction: { kind: 'approval', key: 'k', sessionId: 's-ask' }, completionUnread: false }],
+    ])
+    const item = deriveSections({ workspaces, sessions, archivedSessionIds: [], state: normalizeState({}), pending: status })
+      .sections.flatMap((section) => section.workspaces)[0]
+    expect(item.pendingCount).toBe(1)
+    expect(item.attention).toBe('approval')
+    expect(sessionRowsFor(workspaces[0], sessions, new Set(), status).map((row) => row.attention ?? null))
+      .toEqual([null, 'approval', null, null])
   })
 })
 
