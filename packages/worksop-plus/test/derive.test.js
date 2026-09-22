@@ -5,7 +5,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   DEFAULT_STATE, HIDDEN, PINNED, UNGROUPED,
-  basename, deriveSections, hostOrderWithPinned, moveIdBefore, normalizeState,
+  basename, currentSessionId, deriveSections, hostOrderWithPinned, moveIdBefore, normalizeState,
   orphanSessionRows, owningWorkspaceLabel, pendingKindOf, relTimeParts, runningSubagentCounts,
   sectionStatus, sessionRowsFor, strongestAttention, workspaceLabel, applyStoredOrder, FLAT, SEARCH,
 } from '../src/derive.js'
@@ -340,6 +340,73 @@ describe('session attention', () => {
     expect(item.attention).toBe('approval')
     expect(sessionRowsFor(workspaces[0], sessions, new Set(), status).map((row) => row.attention ?? null))
       .toEqual([null, 'approval', null, null])
+  })
+})
+
+// DSH 0.1.6 also dropped `SessionListState.current` (selection moved to the
+// retained `mainView` reference) and `SessionSummary.completed` (the green
+// "done" bit moved onto the unified `SessionStatus.completionUnread`). Both
+// leave the panel rendering, just silently wrong, so they are pinned here.
+describe('DSH 0.1.6 list and status faces', () => {
+  const account = (ids) => workspace('w', '/dev/one', ids, 100)
+
+  test('currentSessionId reads the 0.1.5 list field first', () => {
+    expect(currentSessionId(sessionsOf({ s1: summary('s1') }, 's1'))).toBe('s1')
+    expect(currentSessionId(sessionsOf({ s1: summary('s1') }))).toBeUndefined()
+    expect(currentSessionId(undefined)).toBeUndefined()
+  })
+
+  test('currentSessionId falls back to the 0.1.6 mainView retention', () => {
+    const list = sessionsOf({
+      a: summary('a', { retainedBy: { mainView: 0, panel: 2 } }),
+      b: summary('b', { retainedBy: { mainView: 1 } }),
+    })
+    expect(currentSessionId(list)).toBe('b')
+    expect(currentSessionId(sessionsOf({ a: summary('a', { retainedBy: { mainView: 0 } }) }))).toBeUndefined()
+    expect(currentSessionId(sessionsOf({ a: summary('a') }))).toBeUndefined()
+  })
+
+  test('the blank Session row shows only while it holds the mainView', () => {
+    const list = {
+      ids: ['s-blank', 's-other'],
+      byId: { 's-blank': summary('s-blank', { blank: true }), 's-other': summary('s-other') },
+      current: undefined,
+    }
+    expect(sessionRowsFor(account(['s-blank', 's-other']), list, new Set()).map((row) => row.id))
+      .toEqual(['s-other'])
+    const retained = {
+      ...list,
+      byId: { ...list.byId, 's-blank': summary('s-blank', { blank: true, retainedBy: { mainView: 1 } }) },
+    }
+    const rows = sessionRowsFor(account(['s-blank', 's-other']), retained, new Set())
+    expect(rows.map((row) => row.id)).toEqual(['s-blank', 's-other'])
+    expect(rows[0].selected).toBe(true)
+    expect(rows[1].selected).toBe(false)
+  })
+
+  test('running and completed come off the 0.1.6 SessionStatus', () => {
+    const status = new Map([
+      ['s-done', { running: false, pendingInteraction: undefined, completionUnread: true }],
+      ['s-cur', { running: true, pendingInteraction: undefined, completionUnread: false }],
+    ])
+    const list = sessionsOf({ 's-done': summary('s-done', { running: false }), 's-cur': summary('s-cur', { running: false }) })
+    const rows = sessionRowsFor(account(['s-done', 's-cur']), list, new Set(), status)
+    // The status wins over the stale summary bit in both directions.
+    expect(rows.map((row) => [row.id, row.running, row.completed]))
+      .toEqual([['s-done', false, true], ['s-cur', true, false]])
+  })
+
+  test('completed still falls back to the 0.1.5 summary flag', () => {
+    const list = sessionsOf({ 's-done': summary('s-done', { completed: true }) })
+    expect(sessionRowsFor(account(['s-done']), list, new Set(), new Map())[0].completed).toBe(true)
+  })
+
+  test('the roll-up follows the status flags into the workspace counts', () => {
+    const status = new Map([['s-done', { running: false, pendingInteraction: undefined, completionUnread: true }]])
+    const list = sessionsOf({ 's-done': summary('s-done') })
+    const item = deriveSections({ workspaces: [account(['s-done'])], sessions: list, archivedSessionIds: [], state: normalizeState({}), pending: status })
+      .sections.flatMap((section) => section.workspaces)[0]
+    expect(item.completedCount).toBe(1)
   })
 })
 

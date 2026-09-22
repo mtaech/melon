@@ -23,9 +23,57 @@ export const ATTENTION_ORDER = ['approval', 'question', 'plan-review']
  * @returns the domain kind, or undefined when nothing is pending.
  */
 export function pendingKindOf(pending, sessionId) {
+  return interactionKind(statusValueOf(pending, sessionId))
+}
+
+/**
+ * Read one Session's raw value from the standard status snapshot.
+ * DSH 0.1.6 hands in a `SessionStatus` (`{ running, pendingInteraction,
+ * completionUnread }`); 0.1.5 hands in the bare pending interaction, which
+ * simply lacks those keys — every read below stays tolerant of both.
+ * @param pending - pending interactions (or Session statuses) by Session id.
+ * @param sessionId - session to look up.
+ * @returns the raw value, or undefined.
+ */
+function statusValueOf(pending, sessionId) {
   if (pending === undefined || pending === null) return undefined
   const value = typeof pending.get === 'function' ? pending.get(sessionId) : pending[sessionId]
-  return interactionKind(value)
+  return value === null ? undefined : value
+}
+
+/**
+ * Resolve the current Session id across DSH rosters. 0.1.5 keeps the selection
+ * on the list snapshot (`SessionListState.current`); 0.1.6 dropped that field
+ * and expresses the selection as the Session retained by the `mainView`
+ * reference, which is how the shipped browser finds it.
+ * @param sessions - Session list snapshot.
+ * @returns the current Session id, or undefined when nothing is selected.
+ */
+export function currentSessionId(sessions) {
+  if (sessions === undefined || sessions === null) return undefined
+  if (sessions.current !== undefined) return sessions.current
+  for (const summary of Object.values(sessions.byId ?? {})) {
+    if ((summary?.retainedBy?.mainView ?? 0) > 0) return summary.id
+  }
+  return undefined
+}
+
+/**
+ * Live running/completed facts for one Session. 0.1.6 moved both onto the
+ * unified `SessionStatus` and deleted `SessionSummary.completed`; 0.1.5 still
+ * carries `completed` on the summary, so each fact falls back per roster.
+ * @param pending - pending interactions (or Session statuses) by Session id.
+ * @param sessionId - session to look up.
+ * @param summary - the Session's list row.
+ * @returns `{ running, completed }` booleans.
+ */
+function sessionStatusFlags(pending, sessionId, summary) {
+  const value = statusValueOf(pending, sessionId)
+  const status = value !== null && typeof value === 'object' ? value : undefined
+  return {
+    running: (status?.running ?? summary?.running) === true,
+    completed: (status?.completionUnread ?? summary?.completed) === true,
+  }
 }
 
 /**
@@ -197,6 +245,7 @@ export function workspaceLabel(workspace) {
  */
 export function sessionRowsFor(workspace, sessions, archived, pending, subagents) {
   const byId = sessions?.byId ?? {}
+  const currentId = currentSessionId(sessions)
   const rows = []
   for (const sessionId of workspace?.sessionIds ?? []) {
     const summary = byId[sessionId]
@@ -205,15 +254,16 @@ export function sessionRowsFor(workspace, sessions, archived, pending, subagents
     // Subagent descendants are advertised as a count on their parent row, not
     // as top-level rows of their own (the shipped browser does the same).
     if (summary.parentId !== undefined && summary.parentId !== null) continue
-    if (summary.blank === true && sessions?.current !== sessionId) continue
+    if (summary.blank === true && currentId !== sessionId) continue
+    const flags = sessionStatusFlags(pending, sessionId, summary)
     rows.push({
       id: sessionId,
       title: summary.displayTitle ?? summary.title ?? sessionId,
-      running: summary.running === true,
-      completed: summary.completed === true,
+      running: flags.running,
+      completed: flags.completed,
       blank: summary.blank === true,
       updatedAt: typeof summary.updatedAt === 'number' ? summary.updatedAt : 0,
-      selected: sessions?.current === sessionId,
+      selected: currentId === sessionId,
       attention: pendingKindOf(pending, sessionId),
       runningSubagentCount: (subagents === undefined ? undefined : subagents.get(sessionId)) ?? 0,
       // Best-effort live indicator, same leaf the shipped browser reads.
@@ -236,6 +286,7 @@ export function orphanSessionRows(workspaces, sessions, archived, pending, subag
     for (const sessionId of workspace.sessionIds ?? []) owned.add(sessionId)
   }
   const byId = sessions?.byId ?? {}
+  const currentId = currentSessionId(sessions)
   const rows = []
   for (const sessionId of sessions?.ids ?? []) {
     if (owned.has(sessionId)) continue
@@ -243,15 +294,16 @@ export function orphanSessionRows(workspaces, sessions, archived, pending, subag
     if (summary === undefined) continue
     if (archived.has(sessionId)) continue
     if (summary.parentId !== undefined && summary.parentId !== null) continue
-    if (summary.blank === true && sessions?.current !== sessionId) continue
+    if (summary.blank === true && currentId !== sessionId) continue
+    const flags = sessionStatusFlags(pending, sessionId, summary)
     rows.push({
       id: sessionId,
       title: summary.displayTitle ?? summary.title ?? sessionId,
-      running: summary.running === true,
-      completed: summary.completed === true,
+      running: flags.running,
+      completed: flags.completed,
       blank: summary.blank === true,
       updatedAt: typeof summary.updatedAt === 'number' ? summary.updatedAt : 0,
-      selected: sessions?.current === sessionId,
+      selected: currentId === sessionId,
       attention: pendingKindOf(pending, sessionId),
       runningSubagentCount: (subagents === undefined ? undefined : subagents.get(sessionId)) ?? 0,
       // Best-effort live indicator, same leaf the shipped browser reads.
@@ -453,16 +505,17 @@ export function deriveSections(input) {
       if (entry === null || typeof entry !== 'object') continue
       if (typeof entry.sessionId !== 'string' || known.has(entry.sessionId)) continue
       const summary = (sessions?.byId ?? {})[entry.sessionId]
+      const flags = sessionStatusFlags(pending, entry.sessionId, summary)
       contentRows.push({
         id: entry.sessionId,
         title: summary?.displayTitle ?? summary?.title ?? entry.sessionId,
         workspace: owningWorkspaceLabel(workspaces, entry.sessionId),
         snippet: typeof entry.snippet === 'string' ? entry.snippet : '',
-        running: summary?.running === true,
-        completed: summary?.completed === true,
+        running: flags.running,
+        completed: flags.completed,
         blank: false,
         updatedAt: typeof summary?.updatedAt === 'number' ? summary.updatedAt : 0,
-        selected: sessions?.current === entry.sessionId,
+        selected: currentSessionId(sessions) === entry.sessionId,
         attention: pendingKindOf(pending, entry.sessionId),
         runningSubagentCount: subagents.get(entry.sessionId) ?? 0,
         scheduled: (summary?.projectionValues?.schedule?.length ?? 0) > 0,

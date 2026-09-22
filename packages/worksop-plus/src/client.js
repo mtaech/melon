@@ -24,7 +24,10 @@
  *     before that — see `WorksopPlusBrowser`);
  *   - `ctx.slots`, `ctx.locale`, `ctx.settingsScope`;
  *   - `ctx.workspaces` (create/rename/delete), `ctx.uiWorkspace`
- *     (startSession/open/archive/pickDirectory), `ctx.sessions` (open).
+ *     (startSession/openSession/forkSession/archive/pickDirectory),
+ *     `ctx.sessions` (list/using/search). Session navigation moved from
+ *     `ctx.sessions.open` to `ctx.uiWorkspace.openSession` in DSH 0.1.6;
+ *     `ui` below dispatches on whichever face the running shell assembled.
  */
 import React from 'react'
 import {
@@ -1881,12 +1884,22 @@ export function apply(ctx) {
   const workspaces = ctx.get('workspaces')
   const uiWorkspace = ctx.get('uiWorkspace')
   const sessions = ctx.get('sessions')
+  // DSH 0.1.6-alpha.2 moved Session navigation off the Session Controller onto
+  // the Workspace UI service: `ISessions` no longer exposes `open`, and
+  // `uiWorkspace.openSession` / `forkSession` own selection now. Dispatch on
+  // the face the running shell assembled so one build serves both rosters;
+  // getting this wrong is invisible until a row is clicked (the old call threw
+  // `sessions.open is not a function` inside the handler).
+  const openSession = (sessionId) => {
+    if (typeof uiWorkspace?.openSession === 'function') { uiWorkspace.openSession(sessionId); return }
+    sessions?.open(sessionId)
+  }
   const ui = {
     startSession: (workspaceId) => {
       if (workspaceId === undefined) { uiWorkspace?.startSession(); return }
       uiWorkspace?.startSession(workspaceId)
     },
-    open: (sessionId) => { sessions?.open(sessionId) },
+    open: (sessionId) => { openSession(sessionId) },
     archive: async (sessionId) => { await uiWorkspace?.archiveSession(sessionId) },
     rename: async (workspaceId, title) => { await workspaces?.rename(workspaceId, title) },
     remove: async (workspaceId) => { await workspaces?.delete(workspaceId) },
@@ -1894,11 +1907,30 @@ export function apply(ctx) {
       await workspaces?.insertSessionBefore(workspaceId, sessionId, beforeSessionId)
     },
     forkSession: (sessionId) => {
+      // 0.1.6 forks and navigates as one uiWorkspace verb; the older shell only
+      // forks on the Session Controller, so the child needs an explicit open.
+      if (typeof uiWorkspace?.forkSession === 'function') {
+        uiWorkspace.forkSession(sessionId)
+          .catch((reason) => { console.error('worksop-plus: fork failed', reason) })
+        return
+      }
       sessions?.fork({ sessionId, increaseTitle: true })
-        .then((childId) => { sessions?.open(childId) })
+        .then((childId) => { openSession(childId) })
         .catch((reason) => { console.error('worksop-plus: fork failed', reason) })
     },
     renameSession: async (sessionId, title) => {
+      // 0.1.6 renames through a retained reference (`using`); the bare
+      // `binding` face can be undefined without local retention, and the
+      // callback shape is the only one the shipped browser uses.
+      if (typeof sessions?.using === 'function') {
+        const result = await sessions.using(
+          sessionId,
+          { source: 'workspaceOperation' },
+          (reference) => reference.binding.session.rename(title),
+        )
+        if (result !== undefined && result.ok !== true) throw new Error(result.error?.message ?? 'rename failed')
+        return
+      }
       const session = sessions?.binding(sessionId)?.session
       if (session === undefined) throw new Error(`unknown session "${sessionId}"`)
       const result = await session.rename(title)

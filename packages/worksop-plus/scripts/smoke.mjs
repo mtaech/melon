@@ -192,6 +192,122 @@ try {
 check('teardown is clean', teardownError === undefined, String(teardownError))
 check('teardown removed the browsing region', registrations.every((entry) => entry.options.name !== 'sidebar.workspaces'))
 
+/* ---------------------------------------------- Session navigation roster */
+
+/**
+ * Boot the browser half against one service roster and return its baked `ui`
+ * face. DSH 0.1.6-alpha.2 moved Session navigation off the Session Controller
+ * (`ISessions` no longer has `open`) onto `uiWorkspace.openSession` /
+ * `forkSession`; routing to the face the shell did not assemble fails only when
+ * a row is clicked, so both rosters are exercised here on the built bundle.
+ * @param services - the roster's service table (slots/locale are supplied).
+ * @returns the `ui` object the panel's inject face carries.
+ */
+function bootFace(services) {
+  const fresh = registration.factory((specifier) => {
+    if (specifier === ICON_SEED) return new Proxy({}, { get: () => () => null })
+    if (specifier === 'react') {
+      return {
+        createElement: (type, props, ...children) => ({ type, props, children }),
+        Fragment: 'Fragment',
+        useState: (initial) => [initial, () => {}],
+        useRef: () => ({ current: null }),
+        useMemo: (fn) => fn(),
+        useEffect: () => {},
+        useSyncExternalStore: (_subscribe, getSnapshot) => getSnapshot(),
+      }
+    }
+    throw new Error(`unexpected require("${specifier}")`)
+  })
+  const registered = []
+  fresh.apply({
+    effect: (callback) => { callback() },
+    get: (key) => key === 'slots'
+      ? {
+        inject: (_name, callback) => { callback(); return () => {} },
+        register: (options, component) => { registered.push({ options, component }); return () => {} },
+      }
+      : key === 'locale' ? { register: () => () => {} } : services[key],
+    inject: (_deps, callback) => { callback({ settingsScope: { bind: () => scope } }) },
+  })
+  const entry = registered.find((item) => item.options.name === 'sidebar.workspaces')
+  return entry?.options.inject?.()
+}
+
+const modernCalls = []
+const modernFace = bootFace({
+  workspaces: { insertBefore: async () => {}, insertSessionBefore: async () => {} },
+  uiWorkspace: {
+    startSession: () => {},
+    archiveSession: async () => {},
+    openSession: (id) => { modernCalls.push(['uiWorkspace.openSession', id]) },
+    forkSession: async (id) => { modernCalls.push(['uiWorkspace.forkSession', id]) },
+  },
+  sessions: {
+    open: (id) => { modernCalls.push(['sessions.open', id]) },
+    fork: async () => { modernCalls.push(['sessions.fork']); return 'child' },
+    using: async (id, options, operation) => {
+      modernCalls.push(['sessions.using', id, options.source])
+      await operation({ binding: { session: { rename: async () => ({ ok: true }) } } })
+      return { ok: true }
+    },
+  },
+})
+modernFace.ui.open('session-modern')
+check(
+  '0.1.6 navigation opens through uiWorkspace.openSession',
+  modernCalls.some((call) => call[0] === 'uiWorkspace.openSession' && call[1] === 'session-modern')
+    && !modernCalls.some((call) => call[0] === 'sessions.open'),
+  JSON.stringify(modernCalls),
+)
+await modernFace.ui.forkSession('session-modern')
+await Promise.resolve()
+check(
+  '0.1.6 fork navigates through uiWorkspace.forkSession',
+  modernCalls.some((call) => call[0] === 'uiWorkspace.forkSession' && call[1] === 'session-modern')
+    && !modernCalls.some((call) => call[0] === 'sessions.fork'),
+  JSON.stringify(modernCalls),
+)
+await modernFace.ui.renameSession('session-modern', 'renamed')
+check(
+  '0.1.6 rename borrows a retained reference',
+  modernCalls.some((call) => call[0] === 'sessions.using' && call[1] === 'session-modern' && call[2] === 'workspaceOperation'),
+  JSON.stringify(modernCalls),
+)
+
+const legacyCalls = []
+const legacyFace = bootFace({
+  workspaces: { insertBefore: async () => {}, insertSessionBefore: async () => {} },
+  // 0.1.5 / 0.1.6-alpha.1: the Workspace UI service has no navigation verbs.
+  uiWorkspace: { startSession: () => {}, archiveSession: async () => {} },
+  sessions: {
+    open: (id) => { legacyCalls.push(['sessions.open', id]) },
+    fork: async () => { legacyCalls.push(['sessions.fork']); return 'child' },
+    binding: (id) => ({ session: { rename: async (title) => { legacyCalls.push(['binding.rename', id, title]); return { ok: true } } } }),
+  },
+})
+legacyFace.ui.open('session-legacy')
+legacyFace.ui.forkSession('session-legacy')
+await Promise.resolve()
+await Promise.resolve()
+await legacyFace.ui.renameSession('session-legacy', 'renamed')
+check(
+  'legacy navigation still opens through sessions.open',
+  legacyCalls.some((call) => call[0] === 'sessions.open' && call[1] === 'session-legacy'),
+  JSON.stringify(legacyCalls),
+)
+check(
+  'legacy fork opens the child it created',
+  legacyCalls.some((call) => call[0] === 'sessions.fork')
+    && legacyCalls.some((call) => call[0] === 'sessions.open' && call[1] === 'child'),
+  JSON.stringify(legacyCalls),
+)
+check(
+  'legacy rename still uses the bare binding',
+  legacyCalls.some((call) => call[0] === 'binding.rename' && call[2] === 'renamed'),
+  JSON.stringify(legacyCalls),
+)
+
 /* --------------------------------------------------------------------- host half */
 
 const hostPath = path.join(root, 'lib', 'host.js')
