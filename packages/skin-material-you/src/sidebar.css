@@ -161,47 +161,44 @@
 }
 
 /* ---- 工作区元信息（由 sidebar-enrich.js 注入的 DOM）--------------------------
- * 行右侧的「会话数 + 最近活动」。原生行只渲染 label，这里补上 host 工作区
- * 存储里的事实。元素由 JS 注入，所以样式也只服务于注入节点（.dsh-skin-*）。
+ * 会话数跟在标题后面（「名称 (3)」），最近活动留在行右侧——与会话行的时间
+ * 列同一条视觉轴。原生行只渲染 label，这里补上工作区存储里的事实。元素由
+ * JS 注入，所以样式也只服务于注入节点（.dsh-skin-*）。
  * ------------------------------------------------------------------------- */
 
-[class*="treeBody"] [class*="projectRow"] .dsh-skin-ws-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+/* 标题行改成水平排布：标题可收缩出省略号，(n) 不被压缩。
+ * 原生 projectText 是为了已废弃的「会话数副标题」而设的纵向列。 */
+[class*="treeBody"] [class*="projectRow"] [class*="projectText"] {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 4px;
+}
+
+/* 会话数：(n) 贴着标题、比标题低一档，数字等宽。标题被省略号截断时计数仍在。 */
+[class*="treeBody"] [class*="projectRow"] .dsh-skin-ws-count {
   flex: 0 0 auto;
-  margin-left: 8px;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 560;
   line-height: 1;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--dsw-alias-label-tertiary);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-/* 会话数胶囊：定宽 + 居中，保证不同位数的计数都落在同一列 */
-[class*="treeBody"] [class*="projectRow"] .dsh-skin-ws-count {
-  flex: 0 0 auto;
-  min-width: 20px;
-  height: 18px;
-  padding: 0 4px;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--m3-shape-full, 999px);
-  background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
-  font-weight: 560;
-}
-
-/* 最近活动：固定列宽右对齐。时间文案长短不一，若不定宽会把计数胶囊顶得
- * 左右乱跑，右栏看起来就散了。 */
+/* 最近活动：固定列宽右对齐。时间文案长短不一，若不定宽右栏看起来就散了。 */
 [class*="treeBody"] [class*="projectRow"] .dsh-skin-ws-time {
   flex: 0 0 46px;
+  margin-left: 8px;
+  font-size: 11px;
+  line-height: 1;
   text-align: right;
   white-space: nowrap;
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
-/* hover 时操作按钮（⋯ +）在同一位置出现，元信息让位 */
-[class*="treeBody"] [class*="projectRow"]:hover .dsh-skin-ws-meta {
+/* hover 时操作按钮（⋯ +）占住行右侧，时间让位。
+ * 计数不跟着隐藏：它属于标题，藏起来会让标题的省略号位置跳动。 */
+[class*="treeBody"] [class*="projectRow"]:hover .dsh-skin-ws-time {
   display: none;
 }

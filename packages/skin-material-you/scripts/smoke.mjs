@@ -63,7 +63,9 @@ check("disposes every registration", disposed.length === 3, disposed.join(", "))
 check("no stale @deepseek-ai scope refs", !source.includes("@deepseek-ai/dsh-skin-material-you"));
 check("font url is an absolute /plugins-independent path", source.includes("/dsh-skin-material-you/fonts/MapleMono-NF-CN-Regular.woff2"));
 check("client bundle inlines the sidebar enrichment", source.includes("function enhanceSidebarWorkspaces") && source.includes("/dsh-skin-material-you/api/workspaces"));
-check("sidebar enrichment is mounted in apply", source.includes("enhanceSidebarWorkspaces()"));
+check("sidebar enrichment is mounted in apply with the client ctx", source.includes("enhanceSidebarWorkspaces(ctx)"));
+check("sidebar enrichment prefers the live client Workspace service", source.includes('ctx.get("workspaces")') && source.includes(".subscribe(load)"));
+check("session count is an inline (n) suffix, not a trailing badge", source.includes('"(" + sessions + ")"') && !source.includes("dsh-skin-ws-meta"));
 
 // ---- Host half: the font route must actually serve the bundled font ----
 const host = await import("../lib/index.js");

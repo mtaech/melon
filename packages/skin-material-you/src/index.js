@@ -14,11 +14,18 @@
  *      files. So the font is exposed here and fonts.css references it absolutely.
  *
  *   2. `GET /dsh-skin-material-you/api/workspaces` — per-workspace metadata
- *      (title / path / visible session count / timestamps) read from the Host
- *      workspace store. The browser sidebar renders only the workspace label,
- *      so the client enrichment fetches this to annotate each row. The read is
- *      best-effort: a missing or unreadable store yields an empty list rather
- *      than an error, and the sidebar simply shows no annotation.
+ *      (title / path / archive-filtered session count / timestamps) read from
+ *      the Host workspace store. The browser sidebar renders only the workspace
+ *      label, so the client enrichment fetches this to annotate each row. The
+ *      read is best-effort: a missing or unreadable store yields an empty list
+ *      rather than an error, and the sidebar simply shows no annotation.
+ *
+ *      This route is the FALLBACK, not the primary source. It sees the
+ *      persisted workspace store only, so its count cannot exclude subagent or
+ *      blank Sessions — the session bodies are compressed and the flags are not
+ *      in the store. The client prefers the live Workspace + Session services,
+ *      which do know those flags, and only lands here while a service is
+ *      missing or has not published its first snapshot.
  *
  * @param ctx - the mounted host Cordis context.
  */
@@ -50,6 +57,12 @@ function workspaceStorePath() {
 
 /**
  * Read per-workspace metadata from the Host workspace store.
+ *
+ * `sessions` here is the archive-filtered account size, not the visible-row
+ * count the client computes: the store carries no `blank`/`origin` fact (those
+ * live in the compressed Session bodies), so this read cannot subtract subagent
+ * or blank Sessions. It is the documented approximation the client uses only
+ * until the live services resolve.
  * @returns rows in Host order; `[]` when the store is absent or unreadable.
  */
 function readWorkspaceInfo() {

@@ -42,7 +42,8 @@ const bundle = `window.__ModuleLoader__.load({
 			return () => { tag.remove(); };
 		}
 
-		// ---- inlined sidebar info enrichment (fetches the host workspaces route) ----
+		// ---- inlined sidebar info enrichment: live client Workspace store
+		// ---- (service name "workspaces"), host workspaces route as fallback ----
 ${enrichJs}
 
 		function tokensFor(tokens, scheme) {
@@ -51,12 +52,17 @@ ${enrichJs}
 			return out;
 		}
 
+		// Enrichment is decoration: never let it take the theme down with it.
+		function safeEnrich(ctx) {
+			try { return enhanceSidebarWorkspaces(ctx); } catch { return () => {}; }
+		}
+
 		function apply(ctx) {
 			const disposeOverride = ctx.theme.overrideTokens("dsh-skin-material-you", materialYouTokens);
 			const disposeStyles = injectSkinStyles();
 			const disposeLight = ctx.theme.register({ id: 'material-you-light', colorScheme: 'light', tokens: tokensFor(materialYouTokens, 'light') });
 			const disposeDark = ctx.theme.register({ id: 'material-you-dark', colorScheme: 'dark', tokens: tokensFor(materialYouTokens, 'dark') });
-			const disposeEnrich = enhanceSidebarWorkspaces();
+			const disposeEnrich = safeEnrich(ctx);
 			ctx.effect(() => {
 				return () => { disposeOverride(); disposeLight(); disposeDark(); disposeEnrich(); if (disposeStyles) disposeStyles(); };
 			}, "dsh-skin-material-you: dispose");

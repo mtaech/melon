@@ -19,7 +19,7 @@
 | 字重 | 100–800（Thin…ExtraBold）+ 全套斜体 |
 | 动效 | M3 emphasized/standard 缓动，支持 `prefers-reduced-motion` |
 | 形状 | M3 圆角体系（4/8/12/16/28/full px） |
-| 侧栏精修 | 工作区卡片/树状引导线/选中 tonal pill（`src/sidebar.css`）+ 每行「会话数 · 最近活动」（`src/sidebar-enrich.js`） |
+| 侧栏精修 | 工作区卡片/树状引导线/选中 tonal pill（`src/sidebar.css`）+ 标题后「(可见会话数)」与行尾「最近活动」（`src/sidebar-enrich.js`，订阅客户端工作区 + 会话 store 实时刷新） |
 
 ## 2. 种子色与 HCT 色调色板
 
@@ -150,18 +150,53 @@ packages/skin-material-you/   # melon 单仓库中的一个包
 │   ├── tokens.mjs      # M3 色调色板 → DSH --dsw-* 覆盖（source of truth）
 │   ├── fonts.css       # Maple Mono @font-face + M3 type scale / shape / motion token
 │   ├── palette.css     # 原始 HCT 色板（参考/文档）
-│   ├── sidebar.css     # 侧栏工作区列表精修 + 注入元信息的样式
-│   ├── sidebar-enrich.js  # 客户端装饰：拉 /api/workspaces 给每行加「会话数 · 最近活动」
+│   ├── sidebar.css     # 侧栏工作区列表精修 + 注入元信息的样式（标题后计数、行尾时间）
+│   ├── sidebar-enrich.js  # 客户端装饰：标题后加「(n) 可见会话数」、行尾加「最近活动」；优先订阅客户端工作区 + 会话 store（实时），无服务时回落 host 路由
 │   ├── client.js       # 源版插件体（apply/overrideTokens/register/注入 CSS）
 │   ├── client.d.ts
 │   └── index.js / index.d.ts   # host 入口：/dsh-skin-material-you 下 serve fonts/ + api/workspaces（构建时复制进 lib/）
 ├── scripts/
-│   └── smoke.mjs       # 按 web shell 方式加载 lib/client.js，驱动 apply/dispose
+│   ├── smoke.mjs       # 按 web shell 方式加载 lib/client.js，驱动 apply/dispose
+│   ├── dom-check.mjs   # 生成自包含走查页（真实 DSH 工作区行样式 + 真实 bundle），仅开发用
+│   └── dom-check.page.js  # 走查页里的侧栏复刻与 24 条断言（浏览器里跑，scripts/ 不入包）
 └── lib/       # 构建产物（DSH 实际加载）——不入版本控制，由 build.mjs 产出
     ├── index.js  # host 侧 no-op 插件入口（exports: name/apply）
     ├── index.d.ts / client.d.ts
     └── client.js     # 浏览器侧 bundle（__ModuleLoader__.load 格式，内联 tokens+CSS）
 ```
+
+### 侧栏工作区元信息的两个数据源
+
+原生工作区行只渲染「文件夹图标 + 名称」，`src/sidebar-enrich.js` 补上两件事：**标题后的
+「(n)」可见会话数**与**行尾的「最近活动」时间**。
+
+`n` 的口径是「展开这个工作区后实际能看到几行」，因此必须套用树自己的可见性谓词
+（ui-workspace 的 `tree.ts` `sessionVisible()`）：排除**全局归档**、排除 **subagent 来源**、
+排除 **blank（新建后从未发过消息）**会话。只扣归档集仍会多算后两类；直接数 `sessionIds`
+则会显示全部历史（每行几十个），与展开后看到的行数对不上。数据源按顺序尝试：
+
+| | 来源 | 刷新时机 |
+| --- | --- | --- |
+| 1 | 客户端工作区服务 `ctx.get("workspaces")` **+ 客户端会话服务 `ctx.get("sessions")`**（前者给 `sessionIds` 与全局归档集，后者给每个会话的 `blank`/`origin`） | 订阅推送：**归档或新建一提交，计数立即变**，不轮询 |
+| 2 | host 半的只读路由 `GET /dsh-skin-material-you/api/workspaces` | 60s 轮询；某个服务缺失或首帧未就绪时的兜底 |
+
+会话服务是关键：`blank`/`origin` 只存在于客户端会话列表里，`storages/workspace.json` 里没有
+（会话体是 zstd 压缩的）。所以**路由兜底只能给出「扣掉归档」的近似值**，会在注释里注明这一点，
+而不是假装它是精确值。两个服务都用 `ctx.get` **可选**获取：拿不到就回落，都拿不到就不加注解——
+绝不影响主题本身（`apply` 里还包了一层 try/catch）。计数是标题的兄弟节点（`title` 之后），
+所以标题文本仍是纯名称，标签匹配不受影响；DOM 是原地更新的，React 重渲染后也能幂等地补回来。
+
+> 注意：计数小不代表数据丢了。若某工作区历史上被归档过大量会话，它可能只显示 `(0)` 或 `(1)`——
+> 那是真实的可见行数；需要看到更多时，请在侧栏切换归档筛选或取消归档。
+
+### DOM 走查（开发用）
+
+`node scripts/dom-check.mjs`（先 `node build.mjs`，需要本地 DSH checkout，可用 `$DSH_DIR` 覆盖）
+会生成一个自包含页面：它内联真实 bundle，并从 `$DSH_DIR/packages/client/ui-workspace/lib/client.js`
+抽出**真实的工作区行样式**、从 `apps/web/dist` 抽出真实 token，再复刻一棵侧栏 DOM 来跑
+`scripts/dom-check.page.js` 里的断言（计数位置/不靠右/标题省略号/归档推送刷新/subagent 与 blank
+排除/会话列表缺席时不倒数/双服务晚注册升级/历史型账号计数/回落路由/卸载清理）。
+用浏览器打开生成的 `.dom-check.html` 即可看到逐条 PASS/FAIL；`?preview=1` 是纯预览模式。
 
 ## 6. 插件形态（参考 dsh-ads）
 
