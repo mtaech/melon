@@ -11,7 +11,7 @@
 import z from "@deepseek-ai/schemastery";
 import { ToolError } from "./errors.js";
 import { resolveConfig, type BrowserToolConfig, type BrowserToolConfigInput } from "./config.js";
-import { defineTool, type Context, type ContentBlock, type ImageAttachmentRef, type ToolRunContext } from "./deps.js";
+import { defineTool, type Context, type ContentBlock, type ContextFormed, type ImageAttachmentRef, type ToolRunContext } from "./deps.js";
 import { acquireBrowser, releaseBrowser, type ResolvedBrowserConfig } from "./browsers/registry.js";
 import { acquireTab, getTab, releaseTab, runInTab, releaseAllTabs, releaseTabsForOwner, getOpenTabsForOwner, expandBrowserScreenshotDir } from "./browsers/tab-supervisor.js";
 import { resolveRelayKind } from "./relay/kind.js";
@@ -19,6 +19,13 @@ import type { ImageContent, RunResultOk, TextContent } from "./browsers/types.js
 import type { JsonValue } from "@deepseek-ai/dsh-util-values";
 import type { UserMessage } from "@deepseek-ai/dsh-session";
 import { logger, uid } from "./util.js";
+
+declare module "@deepseek-ai/dsh-llm" {
+	interface MessageSourceMap {
+		/** Producer source this plugin stamps on the turn-end "tabs left open" reminder. */
+		"browser-tool": { kind: "browser-tool" } & ContextFormed;
+	}
+}
 
 export interface BrowserToolOptions {
 	/** Allow spawning/attaching a browser. False disables the tool. */
@@ -300,7 +307,7 @@ interface AgentStatusPayload {
 /** Set of owner session ids that already received a turn-end tab reminder. */
 const remindedOwners = new Set<string>();
 
-/** Build the model-facing "tabs left open" reminder message (plugin notice). */
+/** Build the model-facing "tabs left open" reminder message (a `notice`-form context message). */
 function buildTabReminderMessage(names: string[]): UserMessage {
 	const summary = `${names.length} browser tab(s) left open`;
 	const text =
@@ -310,7 +317,7 @@ function buildTabReminderMessage(names: string[]): UserMessage {
 		id: `bt-remind-${uid.next()}` as UserMessage["id"],
 		role: "user",
 		content: [{ type: "text", text }],
-		source: { kind: "plugin", plugin: "dsh-browser-tool", form: "notice", summary },
+		source: { kind: "browser-tool", form: "notice", summary },
 	};
 }
 
