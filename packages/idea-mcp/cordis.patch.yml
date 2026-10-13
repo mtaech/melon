@@ -1,0 +1,9 @@
+# dsh-idea-mcp bundle layer: register the `idea_*` tools on the host tools
+# registry so every session composed under this profile can drive IntelliJ IDEA
+# through its built-in MCP server (Settings | Tools | MCP Server).
+#
+# Transport defaults to stdio (spawns `idea stdioMcpServer`). Set
+# `transport: sse` to talk to the already-running IDE on the MCP port instead.
+- insert:
+    - id: dsh-idea-mcp
+      name: 'dsh-idea-mcp'

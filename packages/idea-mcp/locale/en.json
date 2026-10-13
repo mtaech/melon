@@ -1,0 +1,6 @@
+{
+	"meta": {
+		"title": "IDEA MCP Tools",
+		"description": "Drive IntelliJ IDEA from a DSH session: symbol and file search, Quick Doc, inspections, call hierarchy, build, and VCS status, with the project resolved automatically. Adds one idea_* tool per capability plus an idea_execute_tool escape hatch."
+	}
+}

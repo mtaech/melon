@@ -198,6 +198,30 @@ importers:
         specifier: 'catalog:'
         version: 0.25.0
 
+  packages/idea-mcp:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: 'catalog:'
+        version: 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
+      '@deepseek-ai/dsh-llm':
+        specifier: 'catalog:'
+        version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/dsh-tools':
+        specifier: 'catalog:'
+        version: 0.2.0-rc.2(c6e351a6a6cfd1c2a664558bffcd410d)
+      '@deepseek-ai/dsh-util-values':
+        specifier: 'catalog:'
+        version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/schemastery':
+        specifier: 'catalog:'
+        version: 3.18.4
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      typescript:
+        specifier: 'catalog:'
+        version: 5.8.2
+
   packages/model-select-plus:
     dependencies:
       '@deepseek-ai/cordis':

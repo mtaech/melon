@@ -1,0 +1,6 @@
+{
+	"meta": {
+		"title": "IDEA MCP 工具",
+		"description": "在 DSH 会话里驱动 IntelliJ IDEA：符号/文件搜索、Quick Doc、静态检查、调用层次、构建与 VCS 状态，并自动解析当前工程。每个能力一个 idea_* 工具，另带 idea_execute_tool 逃生口。"
+	}
+}

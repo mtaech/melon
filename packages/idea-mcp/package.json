@@ -1,0 +1,96 @@
+{
+	"name": "dsh-idea-mcp",
+	"version": "0.1.3",
+	"description": "DSH IDEA 工具：把 IntelliJ IDEA 的 MCP 能力（符号搜索、静态检查、调用层次、构建、Git、数据源、调试器）包装成一组一等公民 agent 工具，跨工程自动解析 projectPath",
+	"type": "module",
+	"main": "lib/index.js",
+	"types": "lib/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./lib/index.d.ts",
+			"default": "./lib/index.js"
+		},
+		"./src/*": "./src/*",
+		"./locale/*.json": "./locale/*.json",
+		"./icon": "./icon.svg",
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"lib",
+		"src",
+		"cordis.patch.yml",
+		"locale/*.json",
+		"icon.svg",
+		"README.md",
+		"LICENSE"
+	],
+	"dsh": {
+		"bundle": {
+			"patch": "cordis.patch.yml"
+		}
+	},
+	"license": "MIT",
+	"author": "画野 (mtaech)",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/mtaech/melon.git",
+		"directory": "packages/idea-mcp"
+	},
+	"homepage": "https://github.com/mtaech/melon/tree/main/packages/idea-mcp#readme",
+	"bugs": {
+		"url": "https://github.com/mtaech/melon/issues"
+	},
+	"keywords": [
+		"dsh",
+		"dsh-plugin",
+		"cordis",
+		"intellij",
+		"idea",
+		"jetbrains",
+		"mcp"
+	],
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"check": "tsc -p tsconfig.json --noEmit",
+		"test": "bun test",
+		"smoke": "pnpm run build && node scripts/smoke.mjs",
+		"prepublishOnly": "pnpm run build"
+	},
+	"peerDependencies": {
+		"@deepseek-ai/cordis": "catalog:",
+		"@deepseek-ai/dsh-llm": "catalog:",
+		"@deepseek-ai/dsh-tools": "catalog:",
+		"@deepseek-ai/dsh-util-values": "catalog:",
+		"@deepseek-ai/schemastery": "catalog:"
+	},
+	"peerDependenciesMeta": {
+		"@deepseek-ai/cordis": {
+			"optional": true
+		},
+		"@deepseek-ai/dsh-llm": {
+			"optional": true
+		},
+		"@deepseek-ai/dsh-tools": {
+			"optional": true
+		},
+		"@deepseek-ai/dsh-util-values": {
+			"optional": true
+		},
+		"@deepseek-ai/schemastery": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"@deepseek-ai/cordis": "catalog:",
+		"@deepseek-ai/dsh-llm": "catalog:",
+		"@deepseek-ai/dsh-tools": "catalog:",
+		"@deepseek-ai/dsh-util-values": "catalog:",
+		"@deepseek-ai/schemastery": "catalog:",
+		"@types/node": "catalog:",
+		"typescript": "catalog:"
+	}
+}
