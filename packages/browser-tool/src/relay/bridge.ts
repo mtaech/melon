@@ -471,6 +471,21 @@ export class RelayBridge {
 	}
 
 	async #handleBrowserCommand(conn: CdpConnection, msg: CdpCommand): Promise<void> {
+		// Vanilla puppeteer only registers a browser target from a
+		// Target.targetCreated event with type 'browser' + attached (real
+		// Chrome attaches implicitly). Its listeners come up after the first
+		// command (Browser.getVersion), so re-announce on every browser-level
+		// command; puppeteer dedupes by targetId.
+		this.#emit(conn, "Target.targetCreated", {
+			targetInfo: {
+				targetId: `BROWSER${conn.id}`,
+				type: "browser",
+				title: "",
+				url: "",
+				attached: true,
+				canAccessOpener: false,
+			},
+		});
 		switch (msg.method) {
 			case "Browser.getVersion": {
 				this.#reply(conn, msg, {
@@ -533,12 +548,47 @@ export class RelayBridge {
 				this.#reply(conn, msg, {});
 				return;
 			}
+			case "Target.getTargetInfo": {
+				const tid = typeof msg.params?.targetId === "string" ? msg.params.targetId : undefined;
+				if (tid === undefined) {
+					// Browser target: synthetic, so vanilla puppeteer's browser.target() works.
+					this.#reply(conn, msg, {
+						targetInfo: {
+							targetId: `BROWSER${conn.id}`,
+							type: "browser",
+							title: "",
+							url: "",
+							attached: true,
+							canAccessOpener: false,
+						},
+					});
+					return;
+				}
+				const parsed = parseTargetId(tid);
+				const tab = parsed ? this.#tabs.get(parsed.tabId) : undefined;
+				if (!parsed || !tab) {
+					this.#replyError(conn, msg, `No target with id ${tid}`);
+					return;
+				}
+				this.#reply(conn, msg, {
+					targetInfo: parsed.kind === "tab" ? this.#tabInfo(tab, tab.attached) : this.#pageInfo(tab, tab.attached),
+				});
+				return;
+			}
 			case "Target.createTarget": {
 				const url = typeof msg.params?.url === "string" && msg.params.url.length > 0 ? msg.params.url : "about:blank";
 				const result = (await this.#rpc({ op: "createTab", url })) as { tab: TabSnapshot };
 				this.#onTabUpsert(result.tab);
 				this.#claimTab(conn, result.tab.tabId);
 				this.#reply(conn, msg, { targetId: pageTargetId(result.tab.tabId) });
+				// Vanilla puppeteer's waitForTarget needs targetCreated on the
+				// very connection that created the tab (it may not have
+				// discovery on); announce to it unconditionally.
+				const created = this.#tabs.get(result.tab.tabId);
+				if (created) {
+					conn.socket.send(JSON.stringify({ method: "Target.targetCreated", params: { targetInfo: this.#pageInfo(created, created.attached) } }));
+					if (conn.autoAttach && (await this.#ensureAttached(created))) this.#emitTabAttached(conn, created);
+				}
 				return;
 			}
 			case "Target.closeTarget": {
@@ -675,7 +725,7 @@ export class RelayBridge {
 	}
 
 	#eligible(tab: { url: string }): boolean {
-		return !INELIGIBLE_URL.test(tab.url) && !tab.url.startsWith("about:");
+		return !INELIGIBLE_URL.test(tab.url);
 	}
 
 	async #ensureAttached(tab: TabState): Promise<boolean> {
