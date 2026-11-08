@@ -285,8 +285,14 @@ export class RelayBridge {
 			seen.add(snap.tabId);
 			this.#onTabUpsert(snap, { silent: true });
 		}
-		for (const tabId of [...this.#tabs.keys()]) {
-			if (!seen.has(tabId)) this.#onTabRemoved(tabId);
+		// Empty hello snapshots happen while the service worker cold-starts
+		// (chrome.tabs.query racing); never wipe the registry on one.
+		if (msg.tabs.length === 0 && this.#tabs.size > 0) {
+			this.#log("extension hello reported no tabs; keeping registry", { kept: this.#tabs.size });
+		} else {
+			for (const tabId of [...this.#tabs.keys()]) {
+				if (!seen.has(tabId)) this.#onTabRemoved(tabId);
+			}
 		}
 		for (const tab of this.#tabs.values()) {
 			const wasAttached = tab.attached;
@@ -390,6 +396,15 @@ export class RelayBridge {
 			this.#reply(conn, msg, {});
 			return;
 		}
+		// chrome.debugger cannot answer captures on a background tab (20s rpc
+		// hang). Activate, capture, then hand the foreground back.
+		const needsFront = msg.method === "Page.captureScreenshot" || msg.method === "Page.printToPDF";
+		let restoreTabId: number | undefined;
+		if (needsFront) {
+			const prev = [...this.#tabs.values()].find(t => t.active && t.tabId !== tabId);
+			if (prev) restoreTabId = prev.tabId;
+			await this.#rpc({ op: "activateTab", tabId }).catch(() => {});
+		}
 		try {
 			const result = await this.#rpc({
 				op: "send",
@@ -401,6 +416,9 @@ export class RelayBridge {
 			this.#reply(conn, msg, (result as Record<string, unknown> | undefined) ?? {});
 		} catch (err) {
 			this.#replyError(conn, msg, err instanceof Error ? err.message : String(err));
+		} finally {
+			if (needsFront && restoreTabId !== undefined)
+				this.#rpc({ op: "activateTab", tabId: restoreTabId }).catch(() => {});
 		}
 	}
 
